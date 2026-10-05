@@ -54,7 +54,7 @@ Files and directories in all three volumes are owned by `www` (UID / GID 1000), 
 | `BF_PROXY_DNS_RESOLVERS`               | Space-separated IPs   | DNS resolvers used to check propagation, e.g. `1.1.1.1 9.9.9.9`.                                               | *None*                |
 | `BF_PROXY_SSL_REDIRECT_TO_CANONICAL`   | 0 or 1                | Default for `redirectToPrimary` - if 1, aliases are redirected to the primary domain.                          | 0                     |
 | `BF_PROXY_HARDEN`                      | 0 or 1                | If 1, only TLS 1.3 will be allowed (some older devices may not be able to connect).                            | 0                     |
-| `BF_PROXY_BLOCK_AI_BOTS`               | 0 or 1                | If 1, requests from known AI crawlers receive 403 Forbidden.                                                   | 1                     |
+| `BF_PROXY_BLOCK_AI_BOTS`               | 0 or 1                | If 1, requests from AI crawlers that collect training data receive 403 Forbidden - see below.                 | 1                     |
 | `BF_PROXY_ACCESS_LOG`                  | 0 or 1                | If 1, access logs are written to the container output.                                                         | 0                     |
 | `BF_PROXY_CLEAN_INSTALL`               | 0 or 1                | If 1, all domain configuration and certificates are deleted on startup.                                        | 0                     |
 | `BF_PROXY_USE_INTERNAL_CA`             | 0 or 1                | If 1, Caddy's internal CA issues (untrusted) certificates instead of Let's Encrypt - for testing / local use.  | 0                     |
@@ -125,6 +125,10 @@ For every domain:
 * If the upstream cannot be reached, or returns 502, 503 or 504, an auto-refreshing maintenance page is shown.
 * Requests for unknown hosts are redirected to `BF_PROXY_DOMAIN`.
 
+
+### AI Crawlers
+
+When `BF_PROXY_BLOCK_AI_BOTS=1` (the default), requests from crawlers that collect AI training data receive 403 Forbidden.  The list comes from [ai.robots.txt](https://github.com/ai-robots-txt/ai.robots.txt): its `robots.json` is downloaded when the image is built (the release is set by the `AI_ROBOTS_VERSION` build argument), and only crawlers whose `function` is training data collection are kept - AI search crawlers, assistants and user-triggered agents (e.g. `OAI-SearchBot`, `ChatGPT-User`, `PerplexityBot`) are not blocked.  The list is saved to `/usr/share/caddy-proxy/ai-bots.txt`.
 ## Custom Domain Configuration
 
 Each domain's complete Caddy configuration is stored in `/sites/<primary>.json`:

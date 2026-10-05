@@ -1,4 +1,5 @@
 use bf
+use bots.nu
 
 # Valid ACME challenge types
 export const challenges = ["http" "dns"]
@@ -20,6 +21,7 @@ export def opts []: nothing -> record {
         harden: (bf env check PROXY_HARDEN)
         redirect_to_primary: (bf env check PROXY_SSL_REDIRECT_TO_CANONICAL)
         block_ai_bots: (bf env check PROXY_BLOCK_AI_BOTS)
+        ai_bots: (bots load (bf env PROXY_AI_BOTS --safe))
         access_log: (bf env check PROXY_ACCESS_LOG)
         public: (bf env PROXY_PUBLIC --safe)
         storage: (bf env PROXY_STORAGE --safe)

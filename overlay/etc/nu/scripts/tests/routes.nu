@@ -130,6 +130,12 @@ export def domain_route__blocks_ai_bots_when_enabled [] {
     assert not ($disabled | any {|r| ($r | to json) =~ "GPTBot" })
 }
 
+export def domain_route__does_not_block_ai_bots_when_list_is_empty [] {
+    let result = domain_route (helpers domain) (helpers opts | update ai_bots []) | subroutes $in
+
+    assert not ($result | any {|r| ($r | to json) =~ "header_regexp" })
+}
+
 export def domain_route__default_upstream_is_last [] {
     let routes = [{path: "/api/*", upstream: "http://api", stripPrefix: "/api"}]
     let d = conf normalise {primary: "a.test", upstream: "http://a", routes: $routes} (helpers opts)

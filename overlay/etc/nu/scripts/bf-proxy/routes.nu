@@ -1,15 +1,5 @@
+use bots.nu
 use conf.nu
-
-# User agents blocked when BF_PROXY_BLOCK_AI_BOTS is enabled
-export const ai_bots = [
-    "AI2Bot" "Ai2Bot-Dolma" "Amazonbot" "anthropic-ai" "Applebot" "Applebot-Extended" "Brightbot 1.0" "Bytespider"
-    "CCBot" "ChatGPT-User" "Claude-Web" "ClaudeBot" "cohere-ai" "cohere-training-data-crawler" "Crawlspace" "Diffbot"
-    "DuckAssistBot" "FacebookBot" "FriendlyCrawler" "Google-Extended" "GoogleOther" "GoogleOther-Image"
-    "GoogleOther-Video" "GPTBot" "iaskspider/2.0" "ICC-Crawler" "ImagesiftBot" "img2dataset" "ISSCyberRiskCrawler"
-    "Kangaroo Bot" "Meta-ExternalAgent" "Meta-ExternalFetcher" "OAI-SearchBot" "omgili" "omgilibot" "PanguBot"
-    "PerplexityBot" "PetalBot" "Scrapy" "SemrushBot-OCOB" "SemrushBot-SWA" "Sidetrade indexer bot" "Timpibot"
-    "VelenPublicWebCrawler" "Webzio-Extended" "YouBot"
-]
 
 # Response headers added to every proxied site (can be overridden per domain using 'headers' in conf.json)
 export const secure_headers = {
@@ -76,10 +66,11 @@ export def headers_handler [custom: record]: nothing -> record {
 }
 
 # Build a route that blocks AI bots by user agent
-export def block_ai_bots_route []: nothing -> record {
-    let pattern = $ai_bots | each {|x| $x | str replace --all "." "\\." } | str join "|"
+export def block_ai_bots_route [
+    agents: list<string>    # User agents to block
+]: nothing -> record {
     {
-        match: [{header_regexp: {"User-Agent": {pattern: $"\(?i\)\(($pattern)\)"}}}]
+        match: [{header_regexp: {"User-Agent": {pattern: (bots pattern $agents)}}}]
         handle: [{handler: "static_response", status_code: 403}]
         terminal: true
     }
@@ -142,7 +133,8 @@ export def domain_route [
     } else { [] }
 
     # block AI bots
-    let bots = if $opts.block_ai_bots { [(block_ai_bots_route)] } else { [] }
+    let ai_bots = $opts | get --optional ai_bots | default []
+    let bots = if $opts.block_ai_bots and ($ai_bots | is-not-empty) { [(block_ai_bots_route $ai_bots)] } else { [] }
 
     # headers and basic auth apply to every request that gets this far
     let common = [(headers_handler $d.headers)]

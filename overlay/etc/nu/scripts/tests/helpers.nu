@@ -12,6 +12,7 @@ export def opts []: nothing -> record {
         harden: false
         redirect_to_primary: false
         block_ai_bots: true
+        ai_bots: ["GPTBot" "CCBot" "Brightbot 1.0"]
         access_log: false
         public: "/www/public"
         storage: "/ssl/caddy"

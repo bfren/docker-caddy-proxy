@@ -35,6 +35,9 @@ ARG BF_IMAGE
 ARG BF_PUBLISHING
 ARG BF_VERSION
 
+# release of https://github.com/ai-robots-txt/ai.robots.txt used for the list of AI training crawlers to block
+ARG AI_ROBOTS_VERSION=v2.0
+
 # 443/udp is used for HTTP/3
 EXPOSE 80 443 443/udp
 
@@ -62,7 +65,7 @@ ENV \
     BF_PROXY_HARDEN=0 \
     # set to 1 to redirect aliases to the primary domain by default (can be set per domain in conf.json)
     BF_PROXY_SSL_REDIRECT_TO_CANONICAL=0 \
-    # set to 1 to block known AI crawlers
+    # set to 1 to block AI crawlers that collect training data (see ai.robots.txt)
     BF_PROXY_BLOCK_AI_BOTS=1 \
     # set to 1 to enable access logs
     BF_PROXY_ACCESS_LOG=0 \
