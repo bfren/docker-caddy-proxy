@@ -1,4 +1,5 @@
 use bf
+use bf-proxy conf *
 use bf-proxy migrate
 bf env load
 
@@ -37,7 +38,7 @@ def main [] {
         | merge (if (bf env check PROXY_AUTO_CUSTOM) { {custom: true} } else { {} })
 
     {
-        "$schema": "https://raw.githubusercontent.com/bfren/docker-caddy-proxy/main/proxy-conf-schema.json"
+        "$schema": $schema
         domains: [$domain]
     }
         | to json --indent 4
