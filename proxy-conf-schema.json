@@ -76,6 +76,11 @@
                     "additionalProperties": { "type": "string" }
                 },
                 "routes": { "type": "array", "items": { "$ref": "#/$defs/route" } },
+                "clacks": {
+                    "type": "boolean",
+                    "description": "Add the X-Clacks-Overhead: GNU Terry Pratchett response header.",
+                    "default": true
+                },
                 "custom": {
                     "type": "boolean",
                     "description": "If true, /sites/<primary>.json is generated only if it does not exist - otherwise it is left alone, giving full control of the domain's configuration.",

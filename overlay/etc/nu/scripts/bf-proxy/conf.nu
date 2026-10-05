@@ -76,6 +76,7 @@ export def normalise [
         auth: ($d | get --optional auth | default false)
         headers: ($d | get --optional headers | default {})
         routes: ($d | get --optional routes | default [])
+        clacks: ($d | get --optional clacks | default true)
         custom: ($d | get --optional custom | default false)
     }
 }

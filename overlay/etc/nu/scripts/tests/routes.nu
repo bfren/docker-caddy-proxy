@@ -69,6 +69,35 @@ export def headers_handler__custom_headers_override_and_extend [] {
 }
 
 
+export def headers_handler__adds_clacks_header_when_enabled [] {
+    let with = headers_handler --clacks {}
+    let without = headers_handler {}
+
+    assert equal ["GNU Terry Pratchett"] ($with.response.set | get "X-Clacks-Overhead")
+    assert equal null ($without.response.set | get --optional "X-Clacks-Overhead")
+}
+
+export def domain_route__adds_clacks_header_by_default [] {
+    let result = domain_route (helpers domain) (helpers opts) | to json
+
+    assert str contains $result "GNU Terry Pratchett"
+}
+
+export def domain_route__does_not_add_clacks_header_when_disabled [] {
+    let d = conf normalise {primary: "a.test", upstream: "http://a", clacks: false} (helpers opts)
+
+    let result = domain_route $d (helpers opts) | to json
+
+    assert not ($result =~ "X-Clacks-Overhead")
+}
+
+export def proxy_domain_route__adds_clacks_header [] {
+    let result = proxy_domain_route (helpers opts) | to json
+
+    assert str contains $result "GNU Terry Pratchett"
+}
+
+
 #======================================================================================================================
 # auth_handler
 #======================================================================================================================

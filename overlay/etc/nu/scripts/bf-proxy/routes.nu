@@ -9,6 +9,9 @@ export const secure_headers = {
     "X-XSS-Protection": "1; mode=block"
 }
 
+# Header added to keep the name of Sir Terry Pratchett in the overhead - see http://www.gnuterrypratchett.com
+export const clacks_header = {"X-Clacks-Overhead": "GNU Terry Pratchett"}
+
 # Upstream status codes that cause the maintenance page to be shown
 export const maintenance_codes = [502 503 504]
 
@@ -58,9 +61,14 @@ export def maintenance_handlers [public: string]: nothing -> list<record> {
     ]
 }
 
-# Build a headers handler from the secure headers merged with custom headers
-export def headers_handler [custom: record]: nothing -> record {
-    let merged = $secure_headers | merge $custom
+# Build a headers handler from the secure headers (plus the clacks header if enabled) merged with custom headers
+export def headers_handler [
+    --clacks (-c)   # Add the X-Clacks-Overhead header
+    custom: record  # Custom headers to add or override
+]: nothing -> record {
+    let merged = $secure_headers
+        | merge (if $clacks { $clacks_header } else { {} })
+        | merge $custom
     let set = $merged | items {|k, v| {$k: [($v | into string)]} } | reduce --fold {} {|it, acc| $acc | merge $it }
     {handler: "headers", response: {set: $set, deferred: true}}
 }
@@ -140,7 +148,7 @@ export def domain_route [
     let bots = if $opts.block_ai_bots and ($ai_bots | is-not-empty) { [(block_ai_bots_route $ai_bots)] } else { [] }
 
     # headers and basic auth apply to every request that gets this far
-    let common = [(headers_handler $d.headers)]
+    let common = [(headers_handler --clacks=$d.clacks $d.headers)]
         | append (if $d.auth != false { [(auth_handler $d.auth $opts.users)] } else { [] })
 
     # additional routes, then the default upstream
@@ -179,7 +187,7 @@ export def proxy_domain_route [opts: record]: nothing -> record {
     {
         match: [{host: [$opts.proxy_domain]}]
         handle: [
-            (headers_handler {})
+            (headers_handler --clacks {})
             {handler: "file_server", root: $opts.public}
         ]
         terminal: true

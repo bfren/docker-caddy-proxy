@@ -29,6 +29,13 @@ export def normalise__applies_defaults_from_opts [] {
     assert equal false $result.auth
     assert equal [] $result.aliases
     assert equal [] $result.routes
+    assert equal true $result.clacks
+}
+
+export def normalise__clacks_can_be_disabled [] {
+    let result = normalise {primary: "a.test", upstream: "http://a", clacks: false} (helpers opts)
+
+    assert equal false $result.clacks
 }
 
 export def normalise__domain_values_override_defaults [] {

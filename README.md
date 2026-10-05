@@ -93,6 +93,7 @@ Domains are defined in `/ssl/conf.json` - see `proxy-conf-sample.json` for an ex
 | `auth`              | Enable HTTP basic auth: `true` for all users, or a list of user names - see `proxy-adduser`.                                                      |
 | `headers`           | Response headers to add or override, e.g. `{ "X-Frame-Options": "DENY" }`.                                                                        |
 | `routes`            | Additional routes, evaluated in order before the default upstream - see below.                                                                   |
+| `clacks`            | Set to `false` to remove the `X-Clacks-Overhead: GNU Terry Pratchett` response header (added by default).                                       |
 | `custom`            | See [Custom Domain Configuration](#custom-domain-configuration).                                                                                  |
 
 Existing `conf.json` files from nginx-proxy (using `primary`, `upstream`, `aliases` and `custom`) work without changes.
@@ -120,7 +121,7 @@ Each route can have a `path` matcher (e.g. `/api/*` - if omitted the route match
 For every domain:
 
 * HTTP requests are redirected to HTTPS, and certificates are requested and renewed automatically.
-* Secure headers are added (`Strict-Transport-Security`, `X-Frame-Options`, `X-Content-Type-Options`, `X-XSS-Protection`).
+* Secure headers are added (`Strict-Transport-Security`, `X-Frame-Options`, `X-Content-Type-Options`, `X-XSS-Protection`), and `X-Clacks-Overhead: GNU Terry Pratchett` - [because he was a legend](http://www.gnuterrypratchett.com).
 * `X-Real-IP` is sent to the upstream, as well as Caddy's standard `X-Forwarded-*` headers.  WebSockets work automatically.
 * If the upstream cannot be reached, or returns 502, 503 or 504, an auto-refreshing maintenance page is shown.
 * Requests for unknown hosts are redirected to `BF_PROXY_DOMAIN`.
