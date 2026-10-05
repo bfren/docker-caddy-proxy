@@ -1,6 +1,6 @@
 use std assert
-use ../bf-proxy conf
-use ../bf-proxy routes *
+use ../bf-proxy/conf.nu
+use ../bf-proxy/routes.nu *
 use helpers.nu
 
 # Get the subroute routes for a domain route

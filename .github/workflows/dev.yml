@@ -50,8 +50,8 @@ jobs:
         id: docker_export
         uses: docker/build-push-action@v7
         with:
+          # read-only: the multi-platform build below writes the cache, so this amd64-only build must not overwrite it
           cache-from: type=gha
-          cache-to: type=gha,mode=max
           build-args: |
             BF_IMAGE=${{ env.REPOSITORY_NAME }}
             BF_VERSION=${{ steps.version.outputs.contents }}

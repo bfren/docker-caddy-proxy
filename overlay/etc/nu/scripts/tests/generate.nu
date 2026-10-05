@@ -1,7 +1,7 @@
 use std assert
-use ../bf-proxy conf
-use ../bf-proxy generate *
-use ../bf-proxy sites
+use ../bf-proxy/conf.nu
+use ../bf-proxy/generate.nu *
+use ../bf-proxy/sites.nu
 use helpers.nu
 
 

@@ -1,3 +1,5 @@
+use ../bf-proxy/conf.nu
+
 # Options record used by tests - equivalent to the defaults set in the Dockerfile
 export def opts []: nothing -> record {
     {
@@ -22,6 +24,5 @@ export def opts []: nothing -> record {
 
 # A normalised domain with the minimum required values set
 export def domain [primary: string = "example.test"]: nothing -> record {
-    use ../bf-proxy conf
     conf normalise {primary: $primary, upstream: "http://app:5000"} (opts)
 }

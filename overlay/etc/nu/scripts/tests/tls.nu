@@ -1,5 +1,5 @@
 use std assert
-use ../bf-proxy tls *
+use ../bf-proxy/tls.nu *
 use helpers.nu
 
 
