@@ -1,5 +1,5 @@
 #======================================================================================================================
-# STAGE 0: build Caddy with the deSEC DNS provider module
+# STAGE 0: build Caddy with the deSEC DNS provider module, and certinfo (used by proxy-certs)
 #======================================================================================================================
 
 ARG CADDY_BUILDER=caddy:2.11-builder-alpine
@@ -20,17 +20,8 @@ RUN \
         --with github.com/caddy-dns/desec@v${CADDY_DESEC_VERSION} \
         --output /caddy
 
-
-#======================================================================================================================
-# STAGE 1: build certinfo (used by proxy-certs to read certificate details)
-#======================================================================================================================
-
-FROM --platform=${BUILDPLATFORM} ${CADDY_BUILDER} AS certinfo
-ARG TARGETOS
-ARG TARGETARCH
-ARG TARGETVARIANT
-
-WORKDIR /src
+# certinfo must come after Caddy, so changing certinfo does not invalidate the cached Caddy build
+WORKDIR /src/certinfo
 COPY ./certinfo .
 RUN \
     CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} GOARM=${TARGETVARIANT#v} \
@@ -38,12 +29,12 @@ RUN \
 
 
 #======================================================================================================================
-# STAGE 2: create final image
+# STAGE 1: create final image
 #======================================================================================================================
 
 FROM ${BASE_IMAGE}
 COPY --from=build /caddy /usr/bin/caddy
-COPY --from=certinfo /certinfo /usr/bin/certinfo
+COPY --from=build /certinfo /usr/bin/certinfo
 
 LABEL org.opencontainers.image.description="Caddy reverse proxy with automatic SSL, configured using JSON."
 LABEL org.opencontainers.image.source="https://github.com/bfren/docker-caddy-proxy"
