@@ -24,6 +24,8 @@ This is the successor to [bfren/nginx-proxy](https://github.com/bfren/docker-ngi
 
 Ports 80 and 443 need mapping from the host to your proxy container, e.g. adding `"0.0.0.0:80:80"` to the ports section of your docker compose file.  Port 80 is needed for the HTTP challenge and to redirect HTTP to HTTPS.  Map `443/udp` as well to enable HTTP/3.
 
+Caddy runs as the `www` user (UID 1000), not root, and no extra capabilities are needed: Docker allows unprivileged users to bind to ports below 1024 inside a container by default.  If you use host networking (`network_mode: host`) the host's setting applies instead, so you will need to set `net.ipv4.ip_unprivileged_port_start=80` (or lower) on the host.
+
 * 80
 * 443
 * 443/udp
@@ -35,6 +37,8 @@ Ports 80 and 443 need mapping from the host to your proxy container, e.g. adding
 | `/ssl`   | Your `conf.json` file (see `proxy-conf-sample.json`), basic auth users (`users.json`), and Caddy's certificates and ACME account data (in `/ssl/caddy`). |
 | `/sites` | Per-domain Caddy configuration, generated from `conf.json` - see [Custom Domain Configuration](#custom-domain-configuration).                               |
 | `/www`   | `/www/public` is served for `BF_PROXY_DOMAIN`, and contains the maintenance page shown when upstream servers are unavailable.                               |
+
+Files and directories in all three volumes are owned by `www` (UID / GID 1000), so they can be edited by the main user account on the host.
 
 ## Environment Variables
 

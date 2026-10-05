@@ -11,10 +11,11 @@ nu -c "use bf-proxy run ; run preflight"
 
 
 #======================================================================================================================
-# Start Caddy as a foreground service
+# Start Caddy as a foreground service, running as the www user
+# Docker allows unprivileged users to bind to ports 80 and 443 by default (net.ipv4.ip_unprivileged_port_start=0)
 # Caddy's config and data directories are set so anything not covered by the generated configuration is kept in /ssl
 #======================================================================================================================
 
 export XDG_CONFIG_HOME="${BF_PROXY_STORAGE}/config"
 export XDG_DATA_HOME="${BF_PROXY_STORAGE}/data"
-exec caddy run --config "${BF_PROXY_CADDY_CONF}"
+exec s6-setuidgid www caddy run --config "${BF_PROXY_CADDY_CONF}"

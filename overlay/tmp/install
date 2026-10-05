@@ -4,6 +4,9 @@ use bf
 
 # Setup and install Caddy
 def main [] {
+    # add www user - Caddy runs as this user so mapped volumes are owned by (and editable by) UID 1000
+    bf user add www
+
     # save Caddy version to build log
     let version = { ^caddy version }
         | bf handle install

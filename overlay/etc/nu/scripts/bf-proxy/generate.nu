@@ -92,12 +92,12 @@ export def build [
     }
 }
 
-# Validate a Caddy configuration file
+# Validate a Caddy configuration file - as the www user, so anything Caddy creates while validating is owned by www
 export def validate [path: string]: nothing -> nothing {
     let ok = { bf write ok "Caddy configuration is valid." generate/validate }
     let fail = {|code, err|
         $err | print --stderr
         bf write error $"Caddy configuration ($path) is not valid." generate/validate
     }
-    { ^caddy validate --config $path } | bf handle -f $fail -s $ok generate/validate
+    { ^s6-setuidgid www caddy validate --config $path } | bf handle -f $fail -s $ok generate/validate
 }
