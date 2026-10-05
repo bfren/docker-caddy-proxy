@@ -98,6 +98,37 @@ export def proxy_domain_route__adds_clacks_header [] {
 }
 
 
+export def domain_route__compresses_responses_by_default [] {
+    let common = domain_route (helpers domain) (helpers opts) | get handle.0.routes | where {|r| ($r | get --optional match) == null } | first
+
+    assert equal "encode" $common.handle.0.handler
+    assert equal ["zstd" "gzip"] $common.handle.0.prefer
+}
+
+export def domain_route__does_not_compress_when_disabled [] {
+    let d = conf normalise {primary: "a.test", upstream: "http://a", compress: false} (helpers opts)
+
+    let result = domain_route $d (helpers opts) | to json
+
+    assert not ($result =~ '"encode"')
+}
+
+export def proxy_domain_route__returns_204_for_missing_favicon [] {
+    let routes = proxy_domain_route (helpers opts) | get handle.0.routes
+    let favicon = $routes | where {|r| ($r | to json) =~ "favicon" } | first
+
+    assert equal ["/favicon.ico"] $favicon.match.0.path
+    assert equal 204 $favicon.handle.0.status_code
+}
+
+export def proxy_domain_route__caches_static_files [] {
+    let result = proxy_domain_route (helpers opts) | to json
+
+    assert str contains $result "public, max-age=31536000"
+    assert str contains $result '"*.css"'
+}
+
+
 #======================================================================================================================
 # auth_handler
 #======================================================================================================================

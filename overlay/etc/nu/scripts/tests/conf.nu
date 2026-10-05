@@ -30,6 +30,7 @@ export def normalise__applies_defaults_from_opts [] {
     assert equal [] $result.aliases
     assert equal [] $result.routes
     assert equal true $result.clacks
+    assert equal true $result.compress
 }
 
 export def normalise__clacks_can_be_disabled [] {

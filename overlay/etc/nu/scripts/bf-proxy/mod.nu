@@ -1,4 +1,5 @@
 export module bots.nu
+export module certs.nu
 export module cleanup.nu
 export module conf.nu
 export module generate.nu

@@ -22,11 +22,28 @@ RUN \
 
 
 #======================================================================================================================
-# STAGE 1: create final image
+# STAGE 1: build certinfo (used by proxy-certs to read certificate details)
+#======================================================================================================================
+
+FROM --platform=${BUILDPLATFORM} ${CADDY_BUILDER} AS certinfo
+ARG TARGETOS
+ARG TARGETARCH
+ARG TARGETVARIANT
+
+WORKDIR /src
+COPY ./certinfo .
+RUN \
+    CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} GOARM=${TARGETVARIANT#v} \
+    go build -trimpath -ldflags="-s -w" -o /certinfo .
+
+
+#======================================================================================================================
+# STAGE 2: create final image
 #======================================================================================================================
 
 FROM ${BASE_IMAGE}
 COPY --from=build /caddy /usr/bin/caddy
+COPY --from=certinfo /certinfo /usr/bin/certinfo
 
 LABEL org.opencontainers.image.description="Caddy reverse proxy with automatic SSL, configured using JSON."
 LABEL org.opencontainers.image.source="https://github.com/bfren/docker-caddy-proxy"

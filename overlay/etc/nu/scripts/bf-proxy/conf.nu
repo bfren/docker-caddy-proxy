@@ -77,6 +77,7 @@ export def normalise [
         headers: ($d | get --optional headers | default {})
         routes: ($d | get --optional routes | default [])
         clacks: ($d | get --optional clacks | default true)
+        compress: ($d | get --optional compress | default true)
         custom: ($d | get --optional custom | default false)
     }
 }

@@ -76,6 +76,11 @@
                     "additionalProperties": { "type": "string" }
                 },
                 "routes": { "type": "array", "items": { "$ref": "#/$defs/route" } },
+                "compress": {
+                    "type": "boolean",
+                    "description": "Compress responses using zstd or gzip (responses the upstream has already compressed are not compressed again).",
+                    "default": true
+                },
                 "clacks": {
                     "type": "boolean",
                     "description": "Add the X-Clacks-Overhead: GNU Terry Pratchett response header.",

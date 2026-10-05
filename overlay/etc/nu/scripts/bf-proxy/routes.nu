@@ -12,6 +12,9 @@ export const secure_headers = {
 # Header added to keep the name of Sir Terry Pratchett in the overhead - see http://www.gnuterrypratchett.com
 export const clacks_header = {"X-Clacks-Overhead": "GNU Terry Pratchett"}
 
+# File extensions served with long-lived cache headers from the proxy domain's public directory
+export const static_extensions = ["css" "gif" "gz" "ico" "jpeg" "jpg" "js" "mp4" "ogg" "ogv" "otf" "png" "svg" "svgz" "ttf" "webm" "webp" "woff" "woff2"]
+
 # Upstream status codes that cause the maintenance page to be shown
 export const maintenance_codes = [502 503 504]
 
@@ -71,6 +74,11 @@ export def headers_handler [
         | merge $custom
     let set = $merged | items {|k, v| {$k: [($v | into string)]} } | reduce --fold {} {|it, acc| $acc | merge $it }
     {handler: "headers", response: {set: $set, deferred: true}}
+}
+
+# Build an encode handler that compresses responses using zstd or gzip (whichever the client prefers)
+export def encode_handler []: nothing -> record {
+    {handler: "encode", encodings: {zstd: {}, gzip: {}}, prefer: ["zstd" "gzip"]}
 }
 
 # Build a route that blocks AI bots by user agent
@@ -148,7 +156,8 @@ export def domain_route [
     let bots = if $opts.block_ai_bots and ($ai_bots | is-not-empty) { [(block_ai_bots_route $ai_bots)] } else { [] }
 
     # headers and basic auth apply to every request that gets this far
-    let common = [(headers_handler --clacks=$d.clacks $d.headers)]
+    let common = (if $d.compress { [(encode_handler)] } else { [] })
+        | append (headers_handler --clacks=$d.clacks $d.headers)
         | append (if $d.auth != false { [(auth_handler $d.auth $opts.users)] } else { [] })
 
     # additional routes, then the default upstream
@@ -184,12 +193,32 @@ export def error_route [
 
 # Build the route for the proxy server's own domain, which serves files from the public directory
 export def proxy_domain_route [opts: record]: nothing -> record {
+    let public = $opts.public
+
+    # return 204 (No Content) for favicon.ico unless one has been added to the public directory
+    let favicon = {
+        match: [{path: ["/favicon.ico"], not: [{file: {root: $public, try_files: ["{http.request.uri.path}"]}}]}]
+        handle: [{handler: "static_response", status_code: 204}]
+        terminal: true
+    }
+
+    # cache static files for a year
+    let static = {
+        match: [{path: ($static_extensions | each {|x| $"*.($x)" })}]
+        handle: [{handler: "headers", response: {set: {"Cache-Control": ["public, max-age=31536000"]}}}]
+    }
+
     {
         match: [{host: [$opts.proxy_domain]}]
-        handle: [
-            (headers_handler --clacks {})
-            {handler: "file_server", root: $opts.public}
-        ]
+        handle: [{
+            handler: "subroute"
+            routes: [
+                {handle: [(encode_handler) (headers_handler --clacks {})]}
+                $favicon
+                $static
+                {handle: [{handler: "file_server", root: $public}]}
+            ]
+        }]
         terminal: true
     }
 }
