@@ -2,6 +2,7 @@ export module bots.nu
 export module cleanup.nu
 export module conf.nu
 export module generate.nu
+export module migrate.nu
 export module reload.nu
 export module routes.nu
 export module run.nu

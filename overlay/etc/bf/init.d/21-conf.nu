@@ -1,7 +1,9 @@
 use bf
+use bf-proxy migrate
 bf env load
 
-# Clean existing configuration (if requested) and generate conf.json from environment variables (if set)
+# Clean existing configuration (if requested), convert an nginx-proxy conf.json (if found),
+# and generate conf.json from environment variables (if set)
 def main [] {
     # remove all generated configuration and certificates
     if (bf env check PROXY_CLEAN_INSTALL) {
@@ -13,9 +15,14 @@ def main [] {
         ] | each { rm --force --recursive $in }
     }
 
-    # if conf.json already exists, or the auto variables are not set, there is nothing more to do
+    # if conf.json already exists, convert it from nginx-proxy format if necessary - then there is nothing more to do
     let conf = bf env PROXY_CONF
-    if ($conf | path exists) { return }
+    if ($conf | path exists) {
+        migrate $conf
+        return
+    }
+
+    # if the auto variables are not set there is nothing more to do
     let primary = bf env --safe PROXY_AUTO_PRIMARY
     let upstream = bf env --safe PROXY_AUTO_UPSTREAM
     if $primary == "" or $upstream == "" { return }
