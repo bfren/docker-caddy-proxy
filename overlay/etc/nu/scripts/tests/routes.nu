@@ -141,6 +141,16 @@ export def domain_route__extra_routes_come_after_headers_and_auth [] {
 }
 
 
+export def domain_route__before_routes_come_before_redirect_bots_and_auth [] {
+    let d = conf normalise {primary: "a.test", upstream: "http://a", aliases: ["b.test"], redirectToPrimary: true, auth: true} (helpers opts)
+    let before = {match: [{path: ["/health"]}], handle: [{handler: "static_response", body: "ok"}], terminal: true}
+
+    let routes = domain_route --before-routes [$before] $d (helpers opts) | get handle.0.routes
+
+    assert equal $before ($routes | first)
+}
+
+
 #======================================================================================================================
 # auth_handler
 #======================================================================================================================

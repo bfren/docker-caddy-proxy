@@ -28,13 +28,14 @@ export def extras_path [sites: string, primary: string]: nothing -> string { $"(
 
 # Generate the configuration for a domain
 export def generate [
-    --extra-routes: list<record> = []   # Extra routes from the domain's .d directory
+    --before-routes: list<record> = []  # Routes from *.before.json files in the domain's .d directory
+    --extra-routes: list<record> = []   # Routes from other *.json files in the domain's .d directory
     domain: record                      # Normalised domain
     opts: record                        # Options record (see conf opts)
 ]: nothing -> record {
     {
         _comment: (if $domain.custom { $comment_custom } else { $comment_generated })
-        route: (routes domain_route --extra-routes $extra_routes $domain $opts)
+        route: (routes domain_route --before-routes $before_routes --extra-routes $extra_routes $domain $opts)
         errors: (routes error_route $domain $opts)
         tls: (tls policy (conf hosts $domain) $domain.challenge $opts)
     }
@@ -74,11 +75,15 @@ export def load [
     # custom domains are fully controlled by the user via the file, so extra routes only apply to generated domains -
     # they are not saved to the domain file, so it always shows the standard configuration
     if $domain.custom { return $generated }
+    let before_routes = load_extras --before $extras
     let extra_routes = load_extras $extras
-    if ($extra_routes | is-empty) { return $generated }
+    if ($before_routes | is-empty) and ($extra_routes | is-empty) { return $generated }
 
+    if ($before_routes | is-not-empty) {
+        bf write warn $" .. adding ($before_routes | length) route\(s\) from *.before.json in ($extras) - these are not protected by auth, headers or AI bot blocking." sites/load
+    }
     bf write debug $" .. adding ($extra_routes | length) extra route\(s\) from ($extras)." sites/load
-    generate --extra-routes $extra_routes $domain $opts
+    generate --before-routes $before_routes --extra-routes $extra_routes $domain $opts
 }
 
 # Read and check a custom domain configuration file
@@ -93,9 +98,14 @@ export def read_custom [path: string]: nothing -> record {
 }
 
 # Load extra routes from *.json files in a domain's .d directory (sorted by name)
-export def load_extras [dir: string]: nothing -> list<record> {
+export def load_extras [
+    --before (-b)   # Load *.before.json files (otherwise all other *.json files are loaded)
+    dir: string     # The domain's .d directory
+]: nothing -> list<record> {
     if ($dir | bf fs is_not_dir) { return [] }
-    let files = glob $"($dir)/*.json" | sort --natural
+    let files = glob $"($dir)/*.json"
+        | where {|f| ($f | str ends-with ".before.json") == $before }
+        | sort --natural
     $files | each {|f|
         let json = try {
             open --raw $f | from json

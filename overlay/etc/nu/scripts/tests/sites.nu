@@ -81,6 +81,21 @@ export def load__adds_extra_routes_before_the_default_upstream [] {
 }
 
 
+export def load__adds_before_routes_first [] {
+    let dir = mktemp --directory
+    mkdir $"($dir)/a.test.d"
+    {match: [{path: ["/health"]}], handle: [{handler: "static_response", body: "before"}], terminal: true} | to json | save $"($dir)/a.test.d/10-health.before.json"
+    {match: [{path: ["/extra"]}], handle: [{handler: "static_response", body: "after"}]} | to json | save $"($dir)/a.test.d/20-extra.json"
+    let d = helpers domain "a.test"
+
+    let routes = load $d (helpers opts) $dir | get route.handle.0.routes
+
+    assert equal "before" $routes.0.handle.0.body
+    assert equal 1 ($routes | where {|r| ($r | to json) =~ '"before"' } | length)
+    assert equal 1 ($routes | where {|r| ($r | to json) =~ '"after"' } | length)
+}
+
+
 #======================================================================================================================
 # read_custom / load_extras
 #======================================================================================================================
@@ -92,6 +107,18 @@ export def read_custom__requires_route [] {
     let result = try { read_custom $path ; "no error" } catch { "error" }
 
     assert equal "error" $result
+}
+
+export def load_extras__separates_before_files [] {
+    let dir = mktemp --directory
+    {handle: [{body: "before"}]} | to json | save $"($dir)/10.before.json"
+    {handle: [{body: "after"}]} | to json | save $"($dir)/20.json"
+
+    let before = load_extras --before $dir
+    let after = load_extras $dir
+
+    assert equal ["before"] ($before | each {|r| $r.handle.0.body })
+    assert equal ["after"] ($after | each {|r| $r.handle.0.body })
 }
 
 export def load_extras__loads_objects_and_arrays_in_name_order [] {

@@ -133,7 +133,8 @@ export def custom_route [
 
 # Build the main route for a domain - all requests for the domain's hosts are handled by a single subroute
 export def domain_route [
-    --extra-routes: list<record> = []   # Extra routes from the domain's .d directory
+    --before-routes: list<record> = []  # Routes from *.before.json files in the domain's .d directory
+    --extra-routes: list<record> = []   # Routes from other *.json files in the domain's .d directory
     domain: record                      # Normalised domain
     opts: record                        # Options record (see conf opts)
 ]: nothing -> record {
@@ -171,7 +172,8 @@ export def domain_route [
         match: [{host: (conf hosts $d)}]
         handle: [{
             handler: "subroute"
-            routes: ($redirect | append $bots | append [{handle: $common}] | append $routes | append $default)
+            # routes from *.before.json files come first, so they are NOT protected by auth, headers or AI bot blocking
+            routes: ($before_routes | append $redirect | append $bots | append [{handle: $common}] | append $routes | append $default)
         }]
         terminal: true
     }
