@@ -18,4 +18,4 @@ nu -c "use bf-proxy run ; run preflight"
 
 export XDG_CONFIG_HOME="${BF_PROXY_STORAGE}/config"
 export XDG_DATA_HOME="${BF_PROXY_STORAGE}/data"
-exec s6-setuidgid www caddy run --config "${BF_PROXY_CADDY_CONF}"
+s6-setuidgid www caddy run --config "${BF_PROXY_CADDY_CONF}"
