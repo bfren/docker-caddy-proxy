@@ -61,17 +61,6 @@ export def convert__keeps_domains [] {
     assert equal null ($result.conf.domains.1 | get --optional custom)
 }
 
-export def convert__adds_redirect_to_primary_when_requested [] {
-    let input = {domains: [{primary: "a.test", upstream: "http://a", aliases: ["b.test"]} {primary: "c.test", upstream: "http://c"}]}
-
-    let with = convert --redirect-to-primary $input
-    let without = convert $input
-
-    assert equal true $with.conf.domains.0.redirectToPrimary
-    assert equal null ($with.conf.domains.1 | get --optional redirectToPrimary)
-    assert equal null ($without.conf.domains.0 | get --optional redirectToPrimary)
-}
-
 export def convert__converted_configuration_loads_and_validates [] {
     let opts = helpers opts
     let path = mktemp --suffix .json

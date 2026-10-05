@@ -21,13 +21,12 @@ export def is_nginx_proxy [
 # Convert the parsed contents of an nginx-proxy conf.json to the caddy-proxy format, returning the converted
 # configuration and a list of warnings for anything that could not be converted automatically
 export def convert [
-    json: record                # Parsed contents of conf.json
-    --redirect-to-primary (-r)  # Set redirectToPrimary for domains with aliases (nginx PROXY_SSL_REDIRECT_TO_CANONICAL=1)
+    json: record    # Parsed contents of conf.json
 ]: nothing -> record {
     let converted = $json
         | get --optional domains
         | default []
-        | each {|d| convert_domain --redirect-to-primary=$redirect_to_primary $d }
+        | each {|d| convert_domain $d }
 
     {
         conf: {
@@ -40,8 +39,7 @@ export def convert [
 
 # Convert a single domain, returning the converted domain and a list of warnings
 export def convert_domain [
-    --redirect-to-primary (-r)  # Set redirectToPrimary if the domain has aliases
-    domain: record              # Domain from nginx-proxy conf.json
+    domain: record  # Domain from nginx-proxy conf.json
 ]: nothing -> record {
     let primary = $domain | get --optional primary | default ""
     let aliases = $domain | get --optional aliases | default []
@@ -52,7 +50,6 @@ export def convert_domain [
     mut converted = {primary: $primary}
     if ($aliases | is-not-empty) { $converted = $converted | insert aliases $aliases }
     if $upstream != "" { $converted = $converted | insert upstream $upstream }
-    if $redirect_to_primary and ($aliases | is-not-empty) { $converted = $converted | insert redirectToPrimary true }
     if $custom == true { $converted = $converted | insert custom true }
 
     # warn about anything that cannot be converted automatically
@@ -85,10 +82,8 @@ export def main [
     }
     if not (is_nginx_proxy $json) { return }
 
-    # nginx-proxy used a global environment variable for canonical redirection, so carry it into conf.json
     bf write $"($path) is in nginx-proxy format - converting." migrate
-    let redirect = bf env check --no-prefix PROXY_SSL_REDIRECT_TO_CANONICAL
-    let result = convert --redirect-to-primary=$redirect $json
+    let result = convert $json
 
     # back up the original file - never overwrite an earlier backup
     let backup = $"($path).nginx-proxy"
