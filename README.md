@@ -145,7 +145,7 @@ Each domain's complete Caddy configuration is stored in `/sites/<primary>.json`:
 
 If the file does not exist it is generated from the standard base.  What happens next depends on `custom`:
 
-* `"custom": false` (default) - the file is regenerated every time the container starts (or `proxy-regenerate` is run), so any changes you make to it will be lost.  To add to the generated configuration, add `*.json` files to `/sites/<primary>.d` - each should contain a Caddy [route](https://caddyserver.com/docs/json/apps/http/servers/routes/) object or an array of routes, which are added (in file name order) before the generated routes.
+* `"custom": false` (default) - the file is regenerated every time the container starts (or `proxy-regenerate` is run), so any changes you make to it will be lost.  To add to the generated configuration, add `*.json` files to `/sites/<primary>.d` - each should contain a Caddy [route](https://caddyserver.com/docs/json/apps/http/servers/routes/) object or an array of routes.  They are added in file name order, after the security headers and basic auth (so they cannot bypass them) and before the `routes` from `conf.json` and the default upstream.  Nginx `*.conf` files from nginx-proxy are ignored (a warning is logged).
 * `"custom": true` - if the file already exists it is left alone, giving you complete control of the domain's configuration, starting from the standard base.  Run `proxy-regenerate -d <primary> -f` to regenerate it.
 
 ## DNS Challenge

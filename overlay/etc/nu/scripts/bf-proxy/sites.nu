@@ -28,12 +28,13 @@ export def extras_path [sites: string, primary: string]: nothing -> string { $"(
 
 # Generate the configuration for a domain
 export def generate [
-    domain: record  # Normalised domain
-    opts: record    # Options record (see conf opts)
+    --extra-routes: list<record> = []   # Extra routes from the domain's .d directory
+    domain: record                      # Normalised domain
+    opts: record                        # Options record (see conf opts)
 ]: nothing -> record {
     {
         _comment: (if $domain.custom { $comment_custom } else { $comment_generated })
-        route: (routes domain_route $domain $opts)
+        route: (routes domain_route --extra-routes $extra_routes $domain $opts)
         errors: (routes error_route $domain $opts)
         tls: (tls policy (conf hosts $domain) $domain.challenge $opts)
     }
@@ -53,6 +54,12 @@ export def load [
     let extras = extras_path $sites $domain.primary
     if ($extras | bf fs is_not_dir) { mkdir $extras }
 
+    # nginx-proxy configuration files are not used - only Caddy JSON routes are loaded
+    let nginx_files = glob $"($extras)/*.{conf,rules,location,upstream}"
+    if ($nginx_files | is-not-empty) {
+        bf write warn $" .. ignoring Nginx configuration in ($extras) - add Caddy JSON routes as *.json files instead." sites/load
+    }
+
     # use existing custom configuration
     if $domain.custom and ($path | path exists) and (not $force) {
         bf write debug $" .. keeping custom configuration ($path)." sites/load
@@ -64,13 +71,14 @@ export def load [
     let generated = generate $domain $opts
     $generated | to json --indent 4 | save --force $path
 
-    # custom domains are fully controlled by the user via the file, so extra routes only apply to generated domains
+    # custom domains are fully controlled by the user via the file, so extra routes only apply to generated domains -
+    # they are not saved to the domain file, so it always shows the standard configuration
     if $domain.custom { return $generated }
     let extra_routes = load_extras $extras
     if ($extra_routes | is-empty) { return $generated }
 
     bf write debug $" .. adding ($extra_routes | length) extra route\(s\) from ($extras)." sites/load
-    $generated | update route.handle.0.routes {|x| $extra_routes | append $x.route.handle.0.routes }
+    generate --extra-routes $extra_routes $domain $opts
 }
 
 # Read and check a custom domain configuration file

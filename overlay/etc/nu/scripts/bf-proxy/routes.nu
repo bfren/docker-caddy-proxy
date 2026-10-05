@@ -133,8 +133,9 @@ export def custom_route [
 
 # Build the main route for a domain - all requests for the domain's hosts are handled by a single subroute
 export def domain_route [
-    domain: record  # Normalised domain
-    opts: record    # Options record (see conf opts)
+    --extra-routes: list<record> = []   # Extra routes from the domain's .d directory
+    domain: record                      # Normalised domain
+    opts: record                        # Options record (see conf opts)
 ]: nothing -> record {
     let d = $domain
 
@@ -160,8 +161,8 @@ export def domain_route [
         | append (headers_handler --clacks=$d.clacks $d.headers)
         | append (if $d.auth != false { [(auth_handler $d.auth $opts.users)] } else { [] })
 
-    # additional routes, then the default upstream
-    let routes = $d.routes | each {|r| custom_route $r $opts.public }
+    # extra routes (after headers and auth, so they cannot bypass them), additional routes, then the default upstream
+    let routes = $extra_routes | append ($d.routes | each {|r| custom_route $r $opts.public })
     let default = if ($d.upstream | is-empty) { [] } else {
         [{handle: [(reverse_proxy $d.upstream $d.lb $opts.public)]}]
     }

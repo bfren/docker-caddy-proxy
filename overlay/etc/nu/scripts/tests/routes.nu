@@ -129,6 +129,18 @@ export def proxy_domain_route__caches_static_files [] {
 }
 
 
+export def domain_route__extra_routes_come_after_headers_and_auth [] {
+    let d = conf normalise {primary: "a.test", upstream: "http://a", auth: true} (helpers opts)
+    let extra = {match: [{path: ["/api/*"]}], handle: [{handler: "reverse_proxy", upstreams: [{dial: "api:80"}]}], terminal: true}
+
+    let routes = domain_route --extra-routes [$extra] $d (helpers opts) | get handle.0.routes
+    let auth_index = $routes | enumerate | where {|x| ($x.item | to json) =~ "http_basic" } | first | get index
+    let extra_index = $routes | enumerate | where {|x| ($x.item | to json) =~ "api:80" } | first | get index
+
+    assert ($auth_index < $extra_index)
+}
+
+
 #======================================================================================================================
 # auth_handler
 #======================================================================================================================

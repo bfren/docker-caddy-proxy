@@ -66,16 +66,18 @@ export def load__force_regenerates_custom_file [] {
     assert equal "subroute" $result.route.handle.0.handler
 }
 
-export def load__prepends_extra_routes_for_generated_domains [] {
+export def load__adds_extra_routes_before_the_default_upstream [] {
     let dir = mktemp --directory
     mkdir $"($dir)/a.test.d"
     {match: [{path: ["/extra"]}], handle: [{handler: "static_response", body: "extra"}]} | to json | save $"($dir)/a.test.d/10-extra.json"
     let d = helpers domain "a.test"
 
-    let result = load $d (helpers opts) $dir
+    let routes = load $d (helpers opts) $dir | get route.handle.0.routes
+    let extra = $routes | enumerate | where {|x| ($x.item | to json) =~ '"extra"' } | first
 
-    assert equal "extra" $result.route.handle.0.routes.0.handle.0.body
-    assert not ((open --raw $"($dir)/a.test.json") =~ "extra")
+    assert equal (($routes | length) - 2) $extra.index
+    assert equal "reverse_proxy" ($routes | last | get handle.0.handler)
+    assert not ((open --raw $"($dir)/a.test.json") =~ '"extra"')
 }
 
 
