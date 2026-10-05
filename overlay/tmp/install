@@ -5,7 +5,11 @@ use bf
 # Setup and install Caddy
 def main [] {
     # save Caddy version to build log
-    let version = { ^caddy version } | bf handle install | split row " " | first
+    let version = { ^caddy version }
+        | bf handle install
+        | split row " "
+        | first
+        | str replace "v" ""
     bf write $"Caddy ($version) installed."
     bf build add Caddy $version
 
@@ -14,5 +18,5 @@ def main [] {
     mkdir /etc/caddy /sites /ssl /www
 
     # add bf-proxy module to config
-    bf config use bf-proxy
+    bf config use_mod bf-proxy
 }
