@@ -9,7 +9,7 @@ def main [
     --domain (-d): string   # Only regenerate the configuration file for this domain
     --force (-f)            # Regenerate domain configuration files even if they are marked as custom
 ] {
-    if $force { bf-proxy generate --domain=$domain --force } else { bf-proxy generate --domain=$domain }
+    bf-proxy generate --domain=$domain --force=$force
     bf ch apply_file "20-proxy"
     bf-proxy reload
 }

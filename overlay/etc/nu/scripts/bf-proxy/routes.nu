@@ -105,15 +105,15 @@ export def auth_handler [
     }
 }
 
-# Build the routes within a domain's subroute for an additional route definition from conf.json
-export def custom_route [
+# Build a route for an entry in a domain's 'routes' in conf.json
+export def path_route [
     route: record   # Route definition from conf.json
     public: string  # Public directory containing the maintenance page
 ]: nothing -> record {
     let path = $route | get --optional path
     let match = if ($path | is-empty) { {} } else { {match: [{path: (conf as_list $path)}]} }
 
-    let strip = $route | get --optional stripPrefix | default ($route | get --optional strip_prefix)
+    let strip = $route | get --optional stripPrefix
     let rewrite = if ($strip | is-empty) { [] } else { [{handler: "rewrite", strip_path_prefix: $strip}] }
 
     let action = if ($route | get --optional upstream) != null {
@@ -128,7 +128,7 @@ export def custom_route [
         {handler: "file_server", root: $route.root}
     }
 
-    $match | merge {handle: ($rewrite | append $action), terminal: true}
+    $match | merge {handle: [...$rewrite $action], terminal: true}
 }
 
 # Build the main route for a domain - all requests for the domain's hosts are handled by a single subroute
@@ -157,13 +157,15 @@ export def domain_route [
     let ai_bots = $opts | get --optional ai_bots | default []
     let bots = if $opts.block_ai_bots and ($ai_bots | is-not-empty) { [(block_ai_bots_route $ai_bots)] } else { [] }
 
-    # headers and basic auth apply to every request that gets this far
-    let common = (if $d.compress { [(encode_handler)] } else { [] })
-        | append (headers_handler --clacks=$d.clacks $d.headers)
-        | append (if $d.auth != false { [(auth_handler $d.auth $opts.users)] } else { [] })
+    # compression, headers and basic auth apply to every request that gets this far
+    let common = [
+        ...(if $d.compress { [(encode_handler)] } else { [] })
+        (headers_handler --clacks=$d.clacks $d.headers)
+        ...(if $d.auth != false { [(auth_handler $d.auth $opts.users)] } else { [] })
+    ]
 
-    # extra routes (after headers and auth, so they cannot bypass them), additional routes, then the default upstream
-    let routes = $extra_routes | append ($d.routes | each {|r| custom_route $r $opts.public })
+    # routes from conf.json, and the default upstream
+    let path_routes = $d.routes | each {|r| path_route $r $opts.public }
     let default = if ($d.upstream | is-empty) { [] } else {
         [{handle: [(reverse_proxy $d.upstream $d.lb $opts.public)]}]
     }
@@ -172,8 +174,16 @@ export def domain_route [
         match: [{host: (conf hosts $d)}]
         handle: [{
             handler: "subroute"
-            # routes from *.before.json files come first, so they are NOT protected by auth, headers or AI bot blocking
-            routes: ($before_routes | append $redirect | append $bots | append [{handle: $common}] | append $routes | append $default)
+            # requests pass through these routes in order
+            routes: [
+                ...$before_routes   # *.before.json files - NOT protected by auth, headers or AI bot blocking
+                ...$redirect
+                ...$bots
+                {handle: $common}
+                ...$extra_routes    # other *.json files - after auth and headers, so they cannot bypass them
+                ...$path_routes
+                ...$default
+            ]
         }]
         terminal: true
     }

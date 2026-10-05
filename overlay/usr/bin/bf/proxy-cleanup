@@ -8,5 +8,5 @@ bf env load -x
 def main [
     --live (-l) # Perform deletions
 ] {
-    if $live { bf-proxy cleanup --live } else { bf-proxy cleanup }
+    bf-proxy cleanup --live=$live
 }

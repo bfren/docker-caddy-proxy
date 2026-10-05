@@ -32,6 +32,26 @@ export def opts []: nothing -> record {
     }
 }
 
+# Read options from the environment and domains from conf.json, and check both for errors
+export def read []: nothing -> record {
+    let opts = opts
+    let domains = load (bf env PROXY_CONF) $opts
+    let errors = validate $domains $opts | append (check_env $domains $opts)
+    {opts: $opts, domains: $domains, errors: $errors}
+}
+
+# Open and parse a JSON file, writing an error if it is not valid JSON
+export def open_json [
+    path: string    # Path to the JSON file
+    script: string  # The name of the calling script (used in the error message)
+]: nothing -> any {
+    try {
+        open --raw $path | from json
+    } catch {
+        bf write error $"($path) is not valid JSON." $script
+    }
+}
+
 # Load the conf.json file and return the list of normalised domains
 export def load [
     path: string    # Absolute path to conf.json
@@ -43,36 +63,25 @@ export def load [
         return []
     }
 
-    let json = try { open --raw $path | from json } catch {
-        bf write error $"($path) is not valid JSON." conf/load
-    }
-
-    $json
+    open_json $path conf/load
         | get --optional domains
         | default []
         | each {|x| normalise $x $opts }
 }
 
-# Normalise a domain definition from conf.json, applying defaults from $opts -
-# keys may be written in camelCase (preferred) or snake_case
+# Normalise a domain definition from conf.json, applying defaults from $opts
 export def normalise [
     domain: record  # Domain definition from conf.json
     opts: record    # Options record (see opts)
 ]: nothing -> record {
     let d = $domain
-    let get_key = {|camel: string, snake: string|
-        $d
-            | get --optional $camel
-            | default ($d | get --optional $snake)
-    }
-
     {
         primary: ($d | get --optional primary | default "" | str trim | str downcase)
         aliases: ($d | get --optional aliases | default [] | each {|x| $x | str trim | str downcase } | where $it != "")
         upstream: (as_list ($d | get --optional upstream))
         lb: ($d | get --optional lb | default "random")
         challenge: ($d | get --optional challenge | default $opts.challenge)
-        redirect_to_primary: (do $get_key redirectToPrimary redirect_to_primary | default $opts.redirect_to_primary)
+        redirect_to_primary: ($d | get --optional redirectToPrimary | default $opts.redirect_to_primary)
         auth: ($d | get --optional auth | default false)
         headers: ($d | get --optional headers | default {})
         routes: ($d | get --optional routes | default [])
@@ -82,14 +91,13 @@ export def normalise [
     }
 }
 
-# Convert a nullable string or list into a list
+# Convert a value that may be missing, a string or a list into a list of non-empty strings
 export def as_list [value: any]: nothing -> list<string> {
-    match ($value | describe | str replace --regex '<.*' '') {
-        "nothing" => []
-        "string" => (if ($value | str trim) == "" { [] } else { [$value] })
-        "list" => $value
-        _ => [($value | into string)]
-    }
+    [$value]
+        | flatten
+        | where {|x| $x != null }
+        | each {|x| $x | into string | str trim }
+        | where {|x| $x != "" }
 }
 
 # Return all host names (primary and aliases) for a normalised domain
@@ -97,62 +105,70 @@ export def hosts [domain: record]: nothing -> list<string> {
     [$domain.primary] | append $domain.aliases
 }
 
+# Return the messages of rules that have failed - each rule is a list of [failed: bool, message: string]
+export def failures [
+    --prefix: string    # Optional prefix for each message, e.g. the domain name
+    rules: list         # Rules to check
+]: nothing -> list<string> {
+    $rules
+        | where {|r| $r.0 }
+        | each {|r| if ($prefix | is-empty) { $"($r.1)." } else { $"($prefix): ($r.1)." } }
+}
+
 # Validate a list of normalised domains, returning a list of error messages (empty if valid)
 export def validate [
     domains: list<record>   # Normalised domains
     opts: record            # Options record (see opts)
 ]: nothing -> list<string> {
-    # per-domain checks
     let per_domain = $domains
         | enumerate
-        | each {|x|
-            let d = $x.item
-            let name = if $d.primary == "" { $"domains[($x.index)]" } else { $d.primary }
-            mut errors = []
-
-            if $d.primary == "" { $errors = $errors | append $"($name): primary must be set." }
-            if ($d.primary | str starts-with "*") { $errors = $errors | append $"($name): primary cannot be a wildcard." }
-            if $d.challenge not-in $challenges { $errors = $errors | append $"($name): challenge must be one of ($challenges | str join ', ')." }
-            if $d.lb not-in $lb_policies { $errors = $errors | append $"($name): lb must be one of ($lb_policies | str join ', ')." }
-
-            # wildcard certificates can only be issued using the DNS challenge
-            let wildcards = hosts $d | where ($it | str starts-with "*")
-            if ($wildcards | is-not-empty) and $d.challenge != "dns" {
-                $errors = $errors | append $"($name): wildcard aliases \(($wildcards | str join ', ')\) require the dns challenge."
-            }
-
-            # there must be a default upstream unless the domain is custom (when the user controls everything)
-            if ($d.upstream | is-empty) and (not $d.custom) { $errors = $errors | append $"($name): upstream must be set." }
-            $errors = $errors | append ($d.upstream | each {|u| check_upstream $u $name } | flatten)
-
-            # check each additional route
-            $errors = $errors
-                | append ($d.routes
-                    | enumerate
-                    | each {|r| check_route $r.item $"($name) routes[($r.index)]" }
-                    | flatten
-                )
-
-            # basic auth users must exist
-            if ($d.auth | describe | str starts-with "list") {
-                let missing = $d.auth | where $it not-in ($opts.users | columns)
-                if ($missing | is-not-empty) { $errors = $errors | append $"($name): unknown auth users ($missing | str join ', ')." }
-            }
-
-            $errors
-        }
+        | each {|x| validate_domain $x.item $x.index $opts }
         | flatten
 
     # host names must be unique across all domains (including the proxy domain)
-    let all_hosts = $domains
+    let duplicates = $domains
         | each {|d| hosts $d }
         | flatten
         | append $opts.proxy_domain
         | where $it != ""
-    let duplicates = $all_hosts | uniq --repeated
-    let dup_errors = if ($duplicates | is-empty) { [] } else { [$"Host names must be unique - duplicates: ($duplicates | str join ', ')."] }
+        | uniq --repeated
 
-    $per_domain | append $dup_errors
+    $per_domain | append (failures [
+        [($duplicates | is-not-empty)   $"Host names must be unique - duplicates: ($duplicates | str join ', ')"]
+    ])
+}
+
+# Validate a normalised domain, returning a list of error messages (empty if valid)
+export def validate_domain [
+    d: record       # Normalised domain
+    index: int      # Position of the domain in conf.json (used in messages when primary is not set)
+    opts: record    # Options record (see opts)
+]: nothing -> list<string> {
+    let name = if $d.primary == "" { $"domains[($index)]" } else { $d.primary }
+    let wildcards = hosts $d | where ($it | str starts-with "*")
+    let unknown_users = if ($d.auth | describe | str starts-with "list") {
+        $d.auth | where $it not-in ($opts.users | columns)
+    } else { [] }
+
+    let domain_errors = failures --prefix $name [
+        [($d.primary == "")                     "primary must be set"]
+        [($d.primary | str starts-with "*")     "primary cannot be a wildcard"]
+        [($d.challenge not-in $challenges)      $"challenge must be one of ($challenges | str join ', ')"]
+        [($d.lb not-in $lb_policies)            $"lb must be one of ($lb_policies | str join ', ')"]
+        # wildcard certificates can only be issued using the DNS challenge
+        [(($wildcards | is-not-empty) and $d.challenge != "dns")    $"wildcard aliases \(($wildcards | str join ', ')\) require the dns challenge"]
+        # there must be a default upstream unless the domain is custom (when the user controls everything)
+        [(($d.upstream | is-empty) and (not $d.custom))             "upstream must be set"]
+        [($unknown_users | is-not-empty)        $"unknown auth users ($unknown_users | str join ', ')"]
+    ]
+
+    let upstream_errors = $d.upstream | each {|u| check_upstream $u $name } | flatten
+    let route_errors = $d.routes
+        | enumerate
+        | each {|r| check_route $r.item $"($name) routes[($r.index)]" }
+        | flatten
+
+    [...$domain_errors ...$upstream_errors ...$route_errors]
 }
 
 # Validate an upstream URL, returning a list of error messages
@@ -160,14 +176,16 @@ export def check_upstream [
     upstream: string    # Upstream URL, e.g. http://app:5000
     name: string        # Name to use in error messages
 ]: nothing -> list<string> {
-    let invalid = [$"($name): upstream '($upstream)' is not a valid URL."]
-    let parsed = try { $upstream | url parse } catch { return $invalid }
-    if $parsed.scheme == "" or $parsed.host == "" { return $invalid }
+    let parsed = try { $upstream | url parse } catch { {scheme: "", host: "", path: ""} }
 
-    mut errors = []
-    if $parsed.scheme not-in ["http" "https"] { $errors = $errors | append $"($name): upstream '($upstream)' must use http or https." }
-    if $parsed.path not-in ["" "/"] { $errors = $errors | append $"($name): upstream '($upstream)' cannot include a path - use a route with stripPrefix instead." }
-    $errors
+    if $parsed.scheme == "" or $parsed.host == "" {
+        return (failures --prefix $name [[true $"upstream '($upstream)' is not a valid URL"]])
+    }
+
+    failures --prefix $name [
+        [($parsed.scheme not-in ["http" "https"])   $"upstream '($upstream)' must use http or https"]
+        [($parsed.path not-in ["" "/"])             $"upstream '($upstream)' cannot include a path - use a route with stripPrefix instead"]
+    ]
 }
 
 # Validate an additional route definition, returning a list of error messages
@@ -176,14 +194,13 @@ export def check_route [
     name: string    # Name to use in error messages
 ]: nothing -> list<string> {
     let actions = ["upstream" "redirect" "root"] | where {|k| ($route | get --optional $k) != null }
-    if ($actions | length) != 1 { return [$"($name): must have exactly one of upstream, redirect or root."] }
-    if "upstream" in $actions {
-        as_list $route.upstream
-            | each {|u| check_upstream $u $name }
-            | flatten
-    } else {
-        []
+    if ($actions | length) != 1 {
+        return (failures --prefix $name [[true "must have exactly one of upstream, redirect or root"]])
     }
+
+    as_list ($route | get --optional upstream)
+        | each {|u| check_upstream $u $name }
+        | flatten
 }
 
 # Check environment variables required to generate configuration, returning a list of error messages
@@ -191,24 +208,19 @@ export def check_env [
     domains: list<record>   # Normalised domains
     opts: record            # Options record (see opts)
 ]: nothing -> list<string> {
-    mut errors = []
-    if $opts.proxy_domain == "" { $errors = $errors | append "BF_PROXY_DOMAIN must be set." }
-    if $opts.email == "" and (not $opts.internal_ca) { $errors = $errors | append "BF_PROXY_LETS_ENCRYPT_EMAIL must be set." }
-    if $opts.challenge not-in $challenges { $errors = $errors | append $"BF_PROXY_ACME_CHALLENGE must be one of ($challenges | str join ', ')." }
-
     let uses_dns = ($opts.challenge == "dns") or ($domains | any {|d| $d.challenge == "dns" })
-    if $uses_dns and (bf env --safe PROXY_DESEC_TOKEN) == "" and (not $opts.internal_ca) {
-        $errors = $errors | append "BF_PROXY_DESEC_TOKEN must be set to use the dns challenge."
-    }
-    $errors
+    let no_token = (bf env --safe PROXY_DESEC_TOKEN) == ""
+
+    failures [
+        [($opts.proxy_domain == "")                             "BF_PROXY_DOMAIN must be set"]
+        [($opts.email == "" and (not $opts.internal_ca))        "BF_PROXY_LETS_ENCRYPT_EMAIL must be set"]
+        [($opts.challenge not-in $challenges)                   $"BF_PROXY_ACME_CHALLENGE must be one of ($challenges | str join ', ')"]
+        [($uses_dns and $no_token and (not $opts.internal_ca))  "BF_PROXY_DESEC_TOKEN must be set to use the dns challenge"]
+    ]
 }
 
 # Load basic auth users from a JSON file of {username: bcrypt hash}
 export def load_users [path: string]: nothing -> record {
     if $path == "" or ($path | bf fs is_not_file) { return {} }
-    try {
-        open --raw $path | from json
-    } catch {
-        bf write error $"($path) is not valid JSON." conf/load_users
-    }
+    open_json $path conf/load_users
 }

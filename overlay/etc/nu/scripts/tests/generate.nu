@@ -14,7 +14,7 @@ def build_for [input: list<record>, opts: record]: nothing -> record {
     let dir = mktemp --directory
     let domains = $input | each {|x| conf normalise $x $opts }
     let configs = $domains | each {|d| sites load $d $opts $dir }
-    build $configs $domains $opts
+    build $configs $opts
 }
 
 export def build__orders_routes_proxy_domain_first_and_catch_all_last [] {

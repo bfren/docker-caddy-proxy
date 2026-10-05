@@ -1,6 +1,5 @@
 use bf
 use conf.nu
-use sites.nu
 
 # Remove domain configuration files and certificates for domains no longer defined in conf.json
 export def main [
@@ -12,8 +11,9 @@ export def main [
         bf write "Dry run mode enabled." cleanup
     }
 
-    let opts = conf opts
-    let domains = conf load (bf env PROXY_CONF) $opts
+    let config = conf read
+    let opts = $config.opts
+    let domains = $config.domains
     let keep = $domains
         | each {|d| conf hosts $d }
         | flatten

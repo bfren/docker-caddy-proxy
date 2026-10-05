@@ -242,24 +242,24 @@ export def domain_route__adds_auth_when_enabled [] {
 
 
 #======================================================================================================================
-# custom_route
+# path_route
 #======================================================================================================================
 
-export def custom_route__redirect [] {
-    let result = custom_route {path: "/old/*", redirect: "https://a.test/new", status: 302} "/www/public"
+export def path_route__redirect [] {
+    let result = path_route {path: "/old/*", redirect: "https://a.test/new", status: 302} "/www/public"
 
     assert equal 302 $result.handle.0.status_code
     assert equal ["https://a.test/new"] $result.handle.0.headers.Location
 }
 
-export def custom_route__file_server [] {
-    let result = custom_route {path: "/files/*", root: "/www/files"} "/www/public"
+export def path_route__file_server [] {
+    let result = path_route {path: "/files/*", root: "/www/files"} "/www/public"
 
     assert equal {handler: "file_server", root: "/www/files"} $result.handle.0
 }
 
-export def custom_route__without_path_matches_everything [] {
-    let result = custom_route {upstream: "http://a"} "/www/public"
+export def path_route__without_path_matches_everything [] {
+    let result = path_route {upstream: "http://a"} "/www/public"
 
     assert equal null ($result | get --optional match)
 }

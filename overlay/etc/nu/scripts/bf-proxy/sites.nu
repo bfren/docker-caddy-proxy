@@ -88,9 +88,7 @@ export def load [
 
 # Read and check a custom domain configuration file
 export def read_custom [path: string]: nothing -> record {
-    let json = try { open --raw $path | from json } catch {
-        bf write error $"Custom configuration ($path) is not valid JSON." sites/read_custom
-    }
+    let json = conf open_json $path sites/read_custom
     if ($json | get --optional route) == null {
         bf write error $"Custom configuration ($path) must contain a 'route' object." sites/read_custom
     }
@@ -107,11 +105,7 @@ export def load_extras [
         | where {|f| ($f | str ends-with ".before.json") == $before }
         | sort --natural
     $files | each {|f|
-        let json = try {
-            open --raw $f | from json
-        } catch {
-            bf write error $"($f) is not valid JSON." sites/load_extras
-        }
+        let json = conf open_json $f sites/load_extras
         if ($json | describe | str starts-with "list") { $json } else { [$json] }
     } | reduce --fold [] {|it, acc| $acc | append $it }
 }

@@ -9,14 +9,14 @@ export def main [
     --domain (-d): string   # Only regenerate the configuration file for this domain (others are loaded as normal)
     --force (-f)            # Regenerate domain configuration files even if they are custom
 ]: nothing -> string {
-    let opts = conf opts
-    let domains = conf load (bf env PROXY_CONF) $opts
+    let config = conf read
+    let opts = $config.opts
+    let domains = $config.domains
 
     # check configuration and environment
-    let errors = conf validate $domains $opts | append (conf check_env $domains $opts)
-    if ($errors | is-not-empty) {
-        $errors | each {|e| bf write notok $e generate } | ignore
-        bf write error $"($errors | length) configuration error\(s\) - see above." generate
+    if ($config.errors | is-not-empty) {
+        $config.errors | each {|e| bf write notok $e generate } | ignore
+        bf write error $"($config.errors | length) configuration error\(s\) - see above." generate
     }
 
     # check requested domain exists
@@ -29,12 +29,12 @@ export def main [
     let sites_dir = bf env PROXY_SITES
     let configs = $domains | each {|d|
         let force_this = $force and (($domain | is-empty) or $domain == $d.primary)
-        if $force_this { sites load --force $d $opts $sites_dir } else { sites load $d $opts $sites_dir }
+        sites load --force=$force_this $d $opts $sites_dir
     }
 
     # build and save Caddy configuration
     let caddy_conf = bf env PROXY_CADDY_CONF
-    build $configs $domains $opts | to json --indent 2 | save --force $caddy_conf
+    build $configs $opts | to json --indent 2 | save --force $caddy_conf
     bf write debug $" .. saved to ($caddy_conf)." generate
 
     # validate configuration
@@ -45,20 +45,23 @@ export def main [
 # Build the full Caddy configuration
 export def build [
     configs: list<record>   # Domain configurations, each with route, errors and tls keys
-    domains: list<record>   # Normalised domains
     opts: record            # Options record (see conf opts)
 ]: nothing -> record {
     # routes: proxy domain first, then each domain, then a catch-all redirect to the proxy domain
-    let https_routes = [(routes proxy_domain_route $opts)]
-        | append ($configs | get route)
-        | append (routes catch_all_route $opts)
+    let https_routes = [
+        (routes proxy_domain_route $opts)
+        ...($configs | get route)
+        (routes catch_all_route $opts)
+    ]
 
     let error_routes = $configs | each {|c| $c | get --optional errors } | where $it != null
 
     # TLS automation: one policy per domain, then the proxy domain, then a default policy for any other names
-    let policies = $configs | each {|c| $c | get --optional tls } | where $it != null
-        | append (tls policy [$opts.proxy_domain] $opts.challenge $opts)
-        | append (tls policy [] $opts.challenge $opts)
+    let policies = [
+        ...($configs | each {|c| $c | get --optional tls } | where $it != null)
+        (tls policy [$opts.proxy_domain] $opts.challenge $opts)
+        (tls policy [] $opts.challenge $opts)
+    ]
 
     # the HTTPS server - Caddy automatically adds an HTTP server to redirect HTTP to HTTPS and solve HTTP challenges
     let server = {

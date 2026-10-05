@@ -6,13 +6,11 @@ bf env load -x
 
 # Validate conf.json and the current Caddy configuration, without regenerating or reloading
 def main [] {
-    let opts = bf-proxy conf opts
-    let domains = bf-proxy conf load (bf env PROXY_CONF) $opts
-    let errors = bf-proxy conf validate $domains $opts | append (bf-proxy conf check_env $domains $opts)
-    if ($errors | is-not-empty) {
-        $errors | each {|e| bf write notok $e } | ignore
+    let config = bf-proxy conf read
+    if ($config.errors | is-not-empty) {
+        $config.errors | each {|e| bf write notok $e } | ignore
         exit 1
     }
-    bf write ok $"conf.json is valid \(($domains | length) domains\)."
+    bf write ok $"conf.json is valid \(($config.domains | length) domains\)."
     bf-proxy generate validate (bf env PROXY_CADDY_CONF)
 }

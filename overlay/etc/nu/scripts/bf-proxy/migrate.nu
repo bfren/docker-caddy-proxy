@@ -77,9 +77,7 @@ export def main [
 ]: nothing -> nothing {
     if ($path | bf fs is_not_file) { return }
 
-    let json = try { open --raw $path | from json } catch {
-        bf write error $"($path) is not valid JSON." migrate
-    }
+    let json = conf open_json $path migrate
     if not (is_nginx_proxy $json) { return }
 
     bf write $"($path) is in nginx-proxy format - converting." migrate

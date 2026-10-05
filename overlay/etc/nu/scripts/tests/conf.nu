@@ -48,12 +48,6 @@ export def normalise__domain_values_override_defaults [] {
     assert equal false $result.redirect_to_primary
 }
 
-export def normalise__accepts_snake_case_keys [] {
-    let result = normalise {primary: "a.test", upstream: "http://a", redirect_to_primary: true} (helpers opts)
-
-    assert equal true $result.redirect_to_primary
-}
-
 export def normalise__accepts_list_of_upstreams [] {
     let result = normalise {primary: "a.test", upstream: ["http://a" "http://b"]} (helpers opts)
 
@@ -156,6 +150,35 @@ export def validate__checks_routes [] {
 
 
 #======================================================================================================================
+# failures
+#======================================================================================================================
+
+export def failures__returns_messages_for_failed_rules_only [] {
+    let result = failures [[true "first failed"] [false "passed"] [true "second failed"]]
+
+    assert equal ["first failed." "second failed."] $result
+}
+
+export def failures__adds_prefix [] {
+    let result = failures --prefix "a.test" [[true "failed"]]
+
+    assert equal ["a.test: failed."] $result
+}
+
+
+#======================================================================================================================
+# as_list
+#======================================================================================================================
+
+export def as_list__converts_values_to_lists [] {
+    assert equal [] (as_list null)
+    assert equal [] (as_list "  ")
+    assert equal ["http://a"] (as_list "http://a")
+    assert equal ["http://a" "http://b"] (as_list ["http://a" "" "http://b"])
+}
+
+
+#======================================================================================================================
 # check_upstream
 #======================================================================================================================
 
@@ -228,4 +251,37 @@ export def load__loads_and_normalises_domains [] {
 
     assert equal ["example.com" "test.com"] ($result | get primary)
     assert equal [true false] ($result | get custom)
+}
+
+
+#======================================================================================================================
+# open_json / read
+#======================================================================================================================
+
+export def open_json__returns_parsed_json [] {
+    let path = mktemp --suffix .json
+    {a: 1} | to json | save --force $path
+
+    assert equal {a: 1} (open_json $path test)
+}
+
+export def open_json__errors_on_invalid_json [] {
+    let path = mktemp --suffix .json
+    "{not json" | save --force $path
+
+    let result = try { open_json $path test ; "no error" } catch { "error" }
+
+    assert equal "error" $result
+}
+
+export def read__returns_options_domains_and_errors [] {
+    let path = mktemp --suffix .json
+    {domains: [{primary: "a.test", upstream: "http://a"} {primary: "b.test"}]} | to json | save --force $path
+    let e = {BF_PROXY_CONF: $path, BF_PROXY_DOMAIN: "proxy.test", BF_PROXY_LETS_ENCRYPT_EMAIL: "a@b.test"}
+
+    let result = with-env $e { read }
+
+    assert equal "proxy.test" $result.opts.proxy_domain
+    assert equal ["a.test" "b.test"] ($result.domains | get primary)
+    assert equal ["b.test: upstream must be set."] $result.errors
 }
