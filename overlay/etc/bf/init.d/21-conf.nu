@@ -12,13 +12,13 @@ def main [] {
     # if conf.json already exists, or the auto variables are not set, there is nothing more to do
     let conf = bf env PROXY_CONF
     if ($conf | path exists) { return }
-    let primary = bf env PROXY_AUTO_PRIMARY --safe
-    let upstream = bf env PROXY_AUTO_UPSTREAM --safe
+    let primary = bf env --safe PROXY_AUTO_PRIMARY
+    let upstream = bf env --safe PROXY_AUTO_UPSTREAM
     if $primary == "" or $upstream == "" { return }
 
     # generate conf.json
     bf write $"Generating ($conf) using auto environment variables."
-    let aliases = bf env PROXY_AUTO_ALIASES --safe | split row " " | where $it != ""
+    let aliases = bf env --safe PROXY_AUTO_ALIASES | split row " " | where $it != ""
     let domain = {primary: $primary, upstream: $upstream}
         | merge (if ($aliases | is-empty) { {} } else { {aliases: $aliases, redirectToPrimary: true} })
         | merge (if (bf env check PROXY_AUTO_CUSTOM) { {custom: true} } else { {} })

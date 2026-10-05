@@ -10,22 +10,22 @@ export const lb_policies = ["random" "round_robin" "least_conn" "first" "ip_hash
 # Build the options record used to generate configuration, using the current environment
 export def opts []: nothing -> record {
     {
-        proxy_domain: (bf env PROXY_DOMAIN --safe)
-        email: (bf env PROXY_LETS_ENCRYPT_EMAIL --safe)
+        proxy_domain: (bf env --safe PROXY_DOMAIN)
+        email: (bf env --safe PROXY_LETS_ENCRYPT_EMAIL)
         live: (bf env check PROXY_LETS_ENCRYPT_LIVE)
         internal_ca: (bf env check PROXY_USE_INTERNAL_CA)
         challenge: (bf env PROXY_ACME_CHALLENGE "http")
-        dns_propagation_delay: (bf env PROXY_DNS_PROPAGATION_DELAY --safe)
-        dns_propagation_timeout: (bf env PROXY_DNS_PROPAGATION_TIMEOUT --safe)
-        dns_resolvers: (bf env PROXY_DNS_RESOLVERS --safe | split row " " | where $it != "")
+        dns_propagation_delay: (bf env --safe PROXY_DNS_PROPAGATION_DELAY)
+        dns_propagation_timeout: (bf env --safe PROXY_DNS_PROPAGATION_TIMEOUT)
+        dns_resolvers: (bf env --safe PROXY_DNS_RESOLVERS | split row " " | where $it != "")
         harden: (bf env check PROXY_HARDEN)
         redirect_to_primary: (bf env check PROXY_SSL_REDIRECT_TO_CANONICAL)
         block_ai_bots: (bf env check PROXY_BLOCK_AI_BOTS)
-        ai_bots: (bots load (bf env PROXY_AI_BOTS --safe))
+        ai_bots: (bots load (bf env --safe PROXY_AI_BOTS))
         access_log: (bf env check PROXY_ACCESS_LOG)
-        public: (bf env PROXY_PUBLIC --safe)
-        storage: (bf env PROXY_STORAGE --safe)
-        users: (load_users (bf env PROXY_USERS --safe))
+        public: (bf env --safe PROXY_PUBLIC)
+        storage: (bf env --safe PROXY_STORAGE)
+        users: (load_users (bf env --safe PROXY_USERS))
     }
 }
 
@@ -167,7 +167,7 @@ export def check_env [
     if $opts.challenge not-in $challenges { $errors = $errors | append $"BF_PROXY_ACME_CHALLENGE must be one of ($challenges | str join ', ')." }
 
     let uses_dns = ($opts.challenge == "dns") or ($domains | any {|d| $d.challenge == "dns" })
-    if $uses_dns and (bf env PROXY_DESEC_TOKEN --safe) == "" and (not $opts.internal_ca) {
+    if $uses_dns and (bf env --safe PROXY_DESEC_TOKEN) == "" and (not $opts.internal_ca) {
         $errors = $errors | append "BF_PROXY_DESEC_TOKEN must be set to use the dns challenge."
     }
     $errors

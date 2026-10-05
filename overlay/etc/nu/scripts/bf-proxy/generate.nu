@@ -29,7 +29,7 @@ export def main [
     let sites_dir = bf env PROXY_SITES
     let configs = $domains | each {|d|
         let force_this = $force and (($domain | is-empty) or $domain == $d.primary)
-        if $force_this { sites load $d $opts $sites_dir --force } else { sites load $d $opts $sites_dir }
+        if $force_this { sites load --force $d $opts $sites_dir } else { sites load $d $opts $sites_dir }
     }
 
     # build and save Caddy configuration

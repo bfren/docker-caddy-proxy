@@ -60,7 +60,7 @@ export def load__force_regenerates_custom_file [] {
     {route: {handle: [{handler: "static_response", body: "custom"}]}} | to json | save $path
     let d = conf normalise {primary: "a.test", upstream: "http://a", custom: true} (helpers opts)
 
-    let result = load $d (helpers opts) $dir --force
+    let result = load --force $d (helpers opts) $dir
 
     assert not ((open --raw $path) =~ "custom\"")
     assert equal "subroute" $result.route.handle.0.handler
