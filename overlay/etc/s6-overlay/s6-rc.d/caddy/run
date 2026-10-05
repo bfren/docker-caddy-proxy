@@ -1,0 +1,20 @@
+#!/bin/withenv sh
+
+set -euo pipefail
+
+
+#======================================================================================================================
+# Run preflight checks
+#======================================================================================================================
+
+nu -c "use bf-proxy run ; run preflight"
+
+
+#======================================================================================================================
+# Start Caddy as a foreground service
+# Caddy's config and data directories are set so anything not covered by the generated configuration is kept in /ssl
+#======================================================================================================================
+
+export XDG_CONFIG_HOME="${BF_PROXY_STORAGE}/config"
+export XDG_DATA_HOME="${BF_PROXY_STORAGE}/data"
+exec caddy run --config "${BF_PROXY_CADDY_CONF}"

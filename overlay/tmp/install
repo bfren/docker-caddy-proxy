@@ -1,0 +1,18 @@
+#!/usr/bin/nu
+
+use bf
+
+# Setup and install Caddy
+def main [] {
+    # save Caddy version to build log
+    let version = { ^caddy version } | bf handle install | split row " " | first
+    bf write $"Caddy ($version) installed."
+    bf build add Caddy $version
+
+    # create directories
+    bf write "Creating directories."
+    mkdir /etc/caddy /sites /ssl /www
+
+    # add bf-proxy module to config
+    bf config use bf-proxy
+}

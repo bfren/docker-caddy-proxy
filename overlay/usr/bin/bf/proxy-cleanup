@@ -1,0 +1,12 @@
+#!/usr/bin/nu
+
+use bf
+use bf-proxy
+bf env load -x
+
+# Remove domain configuration and certificates for domains no longer defined in conf.json (dry run by default)
+def main [
+    --live (-l) # Perform deletions
+] {
+    if $live { bf-proxy cleanup --live } else { bf-proxy cleanup }
+}

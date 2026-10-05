@@ -1,0 +1,13 @@
+#!/usr/bin/nu
+
+use bf
+use bf-proxy
+bf env load -x
+
+# Remove a user for HTTP basic authentication, then regenerate configuration and reload Caddy
+def main [
+    username: string    # The user name
+] {
+    bf-proxy users remove $username
+    ^proxy-regenerate
+}

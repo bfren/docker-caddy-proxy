@@ -1,0 +1,8 @@
+#!/usr/bin/nu
+
+use bf
+use bf-proxy
+bf env load -x
+
+# Reload Caddy using the current configuration (without regenerating it)
+def main [] { bf-proxy reload }

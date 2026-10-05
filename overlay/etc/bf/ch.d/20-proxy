@@ -1,0 +1,4 @@
+/etc/caddy root:root 0600 0700
+/sites root:root 0644 0755
+/ssl root:root 0600 0700
+/www root:root 0644 0755
