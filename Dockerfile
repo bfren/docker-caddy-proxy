@@ -3,7 +3,7 @@
 #======================================================================================================================
 
 ARG CADDY_BUILDER=caddy:2.11-builder-alpine
-ARG BASE_IMAGE=quay.io/bfren/alpine-s6:alpine3.24-6.3.1
+ARG BASE_IMAGE=quay.io/bfren/alpine-s6:alpine3.24-6.3.2
 
 FROM --platform=${BUILDPLATFORM} ${CADDY_BUILDER} AS build
 ARG TARGETOS
