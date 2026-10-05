@@ -169,4 +169,4 @@ The token is not written to the generated configuration files - Caddy reads it f
 
 ## Copyright
 
-> Copyright (c) 2026 [bfren](https://bfren.dev) (unless otherwise stated)
+> Copyright (c) 2020-2026 [bfren](https://bfren.dev) (unless otherwise stated)
