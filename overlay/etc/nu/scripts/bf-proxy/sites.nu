@@ -89,7 +89,11 @@ export def load_extras [dir: string]: nothing -> list<record> {
     if ($dir | bf fs is_not_dir) { return [] }
     let files = glob $"($dir)/*.json" | sort --natural
     $files | each {|f|
-        let json = try { open --raw $f | from json } catch { bf write error $"($f) is not valid JSON." sites/load_extras }
+        let json = try {
+            open --raw $f | from json
+        } catch {
+            bf write error $"($f) is not valid JSON." sites/load_extras
+        }
         if ($json | describe | str starts-with "list") { $json } else { [$json] }
     } | reduce --fold [] {|it, acc| $acc | append $it }
 }

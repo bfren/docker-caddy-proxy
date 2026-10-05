@@ -6,11 +6,18 @@ use sites.nu
 export def main [
     --live (-l) # Perform deletions (otherwise a dry run is performed)
 ]: nothing -> nothing {
-    if $live { bf write "Deletion mode enabled." cleanup } else { bf write "Dry run mode enabled." cleanup }
+    if $live {
+        bf write "Deletion mode enabled." cleanup
+    } else {
+        bf write "Dry run mode enabled." cleanup
+    }
 
     let opts = conf opts
     let domains = conf load (bf env PROXY_CONF) $opts
-    let keep = $domains | each {|d| conf hosts $d } | flatten | append $opts.proxy_domain
+    let keep = $domains
+        | each {|d| conf hosts $d }
+        | flatten
+        | append $opts.proxy_domain
 
     # domain configuration files and directories in the sites directory
     let sites_dir = bf env PROXY_SITES
@@ -42,5 +49,7 @@ export def main [
 
 # Get the domain name from a path in the sites directory (strips .json or .d)
 export def site_name [path: string]: nothing -> string {
-    $path | path basename | str replace --regex '\.(json|d)$' ''
+    $path
+        | path basename
+        | str replace --regex '\.(json|d)$' ''
 }

@@ -16,7 +16,10 @@ const not_training_pattern = '(?i)not used for (model )?training'
 export def is_training [
     robot: record   # A value from robots.json
 ]: nothing -> bool {
-    let function = $robot | get --optional function | default "" | str trim
+    let function = $robot
+        | get --optional function
+        | default ""
+        | str trim
     if ($function =~ $not_training_pattern) { return false }
     ($function | str downcase) in $training_categories or ($function =~ $training_pattern)
 }
@@ -25,7 +28,11 @@ export def is_training [
 export def select_training [
     robots: record  # Parsed robots.json - keys are user agents
 ]: nothing -> list<string> {
-    $robots | transpose agent robot | where {|x| is_training $x.robot } | get agent | sort --ignore-case
+    $robots
+        | transpose agent robot
+        | where {|x| is_training $x.robot }
+        | get agent
+        | sort --ignore-case
 }
 
 # Download robots.json, select training crawlers and save their user agents (one per line) to $path
@@ -33,9 +40,11 @@ export def download [
     version: string # ai.robots.txt release tag, e.g. v2.0
     path: string    # Where to save the list
 ]: nothing -> nothing {
-    let url = $robots_json_url | str replace "{version}" $version
+    let url = bf string format $robots_json_url {version: $version}
     bf write $"Downloading AI crawler list from ($url)." bots/download
-    let robots = try { http get --raw $url | from json } catch {
+    let robots = try {
+        http get --raw $url | from json
+    } catch {
         bf write error $"Unable to download or parse ($url)." bots/download
     }
 
@@ -51,7 +60,10 @@ export def load [
     path: string    # Path to the list
 ]: nothing -> list<string> {
     if $path == "" or ($path | bf fs is_not_file) { return [] }
-    open --raw $path | lines | each {|x| $x | str trim } | where {|x| $x != "" and not ($x | str starts-with "#") }
+    open --raw $path
+        | lines
+        | each {|x| $x | str trim }
+        | where {|x| $x != "" and not ($x | str starts-with "#") }
 }
 
 # Escape regular expression metacharacters in a user agent
@@ -63,6 +75,8 @@ export def escape []: string -> string {
 export def pattern [
     agents: list<string>    # User agents to match
 ]: nothing -> string {
-    let escaped = $agents | each {|x| $x | escape } | str join "|"
+    let escaped = $agents
+        | each {|x| $x | escape }
+        | str join "|"
     $"\(?i\)\\b\(($escaped)\)"
 }

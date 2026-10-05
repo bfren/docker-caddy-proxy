@@ -6,7 +6,11 @@ def main [] {
     # remove all generated configuration and certificates
     if (bf env check PROXY_CLEAN_INSTALL) {
         bf write "Clean install requested - removing domain configuration and certificates."
-        rm --force --recursive ...(glob $"(bf env PROXY_SITES)/*") (bf env PROXY_STORAGE) (bf env PROXY_CADDY_CONF)
+        [
+            (glob $"(bf env PROXY_SITES)/*")
+            (bf env PROXY_STORAGE)
+            (bf env PROXY_CADDY_CONF)
+        ] | each { rm --force --recursive $in }
     }
 
     # if conf.json already exists, or the auto variables are not set, there is nothing more to do
@@ -18,7 +22,9 @@ def main [] {
 
     # generate conf.json
     bf write $"Generating ($conf) using auto environment variables."
-    let aliases = bf env --safe PROXY_AUTO_ALIASES | split row " " | where $it != ""
+    let aliases = bf env --safe PROXY_AUTO_ALIASES
+        | split row " "
+        | where $it != ""
     let domain = {primary: $primary, upstream: $upstream}
         | merge (if ($aliases | is-empty) { {} } else { {aliases: $aliases, redirectToPrimary: true} })
         | merge (if (bf env check PROXY_AUTO_CUSTOM) { {custom: true} } else { {} })
@@ -26,7 +32,9 @@ def main [] {
     {
         "$schema": "https://raw.githubusercontent.com/bfren/docker-caddy-proxy/main/proxy-conf-schema.json"
         domains: [$domain]
-    } | to json --indent 4 | save $conf
+    }
+        | to json --indent 4
+        | save $conf
 
     # return nothing
     return

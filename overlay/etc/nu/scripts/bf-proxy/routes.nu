@@ -83,7 +83,10 @@ export def auth_handler [
 ]: nothing -> record {
     let names = if ($auth | describe | str starts-with "list") { $auth } else { $users | columns }
     let accounts = $names | each {|n| {username: $n, password: ($users | get $n)} }
-    {handler: "authentication", providers: {http_basic: {accounts: $accounts, hash: {algorithm: "bcrypt"}, realm: "restricted"}}}
+    {
+        handler: "authentication"
+        providers: {http_basic: {accounts: $accounts, hash: {algorithm: "bcrypt"}, realm: "restricted"}}
+    }
 }
 
 # Build the routes within a domain's subroute for an additional route definition from conf.json
