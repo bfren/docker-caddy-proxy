@@ -13,7 +13,41 @@ fi
 
 
 #======================================================================================================================
-# Watch configuration files and regenerate / reload Caddy configuration when they change
+# Return a fingerprint of the configuration files (paths, sizes and modified times) - it changes when any of them do
+#
+# This loop runs all the time, so it uses the shell and busybox (about 1 MB of memory, 2 ms per check) rather than
+# Nushell (about 33 MB of memory, 12 ms per check) - Nushell is only started when configuration needs regenerating.
+# Polling is used (rather than file system events) because events are not reliably passed through to containers from
+# bind-mounted volumes, e.g. on Docker Desktop.
 #======================================================================================================================
 
-nu -c "use bf-proxy autoreload ; autoreload"
+fingerprint () {
+    find "${BF_PROXY_CONF}" "${BF_PROXY_USERS}" "${BF_PROXY_SITES}" -name "*.json" -exec stat -c "%n %s %Y" {} + 2>/dev/null \
+        | sort \
+        | md5sum \
+        || true
+}
+
+
+#======================================================================================================================
+# Check for changes every 5 seconds, and regenerate / reload Caddy configuration once files have stopped changing
+#======================================================================================================================
+
+INTERVAL=5
+bf-write "Watching ${BF_PROXY_CONF}, ${BF_PROXY_USERS} and ${BF_PROXY_SITES} for changes." autoreload
+
+LAST=$(fingerprint)
+while true ; do
+    sleep ${INTERVAL}
+    CURRENT=$(fingerprint)
+    [ "${CURRENT}" = "${LAST}" ] && continue
+
+    # wait until files have stopped changing (e.g. while an editor saves several files)
+    sleep ${INTERVAL}
+    [ "$(fingerprint)" != "${CURRENT}" ] && continue
+
+    nu -c "use bf-proxy autoreload ; autoreload"
+
+    # take the fingerprint again because regenerating rewrites generated files in the sites directory
+    LAST=$(fingerprint)
+done
