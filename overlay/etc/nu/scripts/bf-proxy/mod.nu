@@ -1,3 +1,4 @@
+export module autoreload.nu
 export module bots.nu
 export module certs.nu
 export module cleanup.nu

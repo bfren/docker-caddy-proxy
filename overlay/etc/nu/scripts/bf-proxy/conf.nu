@@ -7,6 +7,9 @@ export const schema = "https://raw.githubusercontent.com/bfren/docker-caddy-prox
 # Valid ACME challenge types
 export const challenges = ["http" "dns"]
 
+# Valid retry durations (empty disables retries)
+export const duration_pattern = '^(\d+(ms|s|m))?$'
+
 # Valid load balancing selection policies
 export const lb_policies = ["random" "round_robin" "least_conn" "first" "ip_hash" "uri_hash" "client_ip_hash"]
 
@@ -18,6 +21,7 @@ export def opts []: nothing -> record {
         live: (bf env check PROXY_LETS_ENCRYPT_LIVE)
         internal_ca: (bf env check PROXY_USE_INTERNAL_CA)
         challenge: (bf env PROXY_ACME_CHALLENGE "http")
+        retry: (bf env --safe PROXY_UPSTREAM_RETRY)
         dns_propagation_delay: (bf env --safe PROXY_DNS_PROPAGATION_DELAY)
         dns_propagation_timeout: (bf env --safe PROXY_DNS_PROPAGATION_TIMEOUT)
         dns_resolvers: (bf env --safe PROXY_DNS_RESOLVERS | split row " " | where $it != "")
@@ -80,6 +84,7 @@ export def normalise [
         aliases: ($d | get --optional aliases | default [] | each {|x| $x | str trim | str downcase } | where $it != "")
         upstream: (as_list ($d | get --optional upstream))
         lb: ($d | get --optional lb | default "random")
+        retry: ($d | get --optional retry | default $opts.retry | into string)
         challenge: ($d | get --optional challenge | default $opts.challenge)
         redirect_to_primary: ($d | get --optional redirectToPrimary | default $opts.redirect_to_primary)
         auth: ($d | get --optional auth | default false)
@@ -155,6 +160,7 @@ export def validate_domain [
         [($d.primary | str starts-with "*")     "primary cannot be a wildcard"]
         [($d.challenge not-in $challenges)      $"challenge must be one of ($challenges | str join ', ')"]
         [($d.lb not-in $lb_policies)            $"lb must be one of ($lb_policies | str join ', ')"]
+        [(not ($d.retry =~ $duration_pattern))   $"retry '($d.retry)' must be a duration, e.g. 5s, 500ms or 1m"]
         # wildcard certificates can only be issued using the DNS challenge
         [(($wildcards | is-not-empty) and $d.challenge != "dns")    $"wildcard aliases \(($wildcards | str join ', ')\) require the dns challenge"]
         # there must be a default upstream unless the domain is custom (when the user controls everything)

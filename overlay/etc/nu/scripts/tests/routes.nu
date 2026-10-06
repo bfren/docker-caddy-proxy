@@ -50,6 +50,35 @@ export def reverse_proxy__multiple_upstreams_use_load_balancing [] {
 }
 
 
+export def reverse_proxy__retries_unreachable_upstreams [] {
+    let result = reverse_proxy --retry "5s" ["http://a"] "random" "/www/public"
+
+    assert equal {try_duration: "5s", try_interval: "250ms"} $result.load_balancing
+}
+
+export def reverse_proxy__does_not_retry_when_disabled [] {
+    let zero = reverse_proxy --retry "0s" ["http://a"] "random" "/www/public"
+    let empty = reverse_proxy ["http://a"] "random" "/www/public"
+
+    assert equal null ($zero | get --optional load_balancing)
+    assert equal null ($empty | get --optional load_balancing)
+}
+
+export def reverse_proxy__combines_retry_and_load_balancing [] {
+    let result = reverse_proxy --retry "10s" ["http://a" "http://b"] "first" "/www/public"
+
+    assert equal {selection_policy: {policy: "first"}, try_duration: "10s", try_interval: "250ms"} $result.load_balancing
+}
+
+export def domain_route__uses_domain_retry_for_default_and_path_routes [] {
+    let d = conf normalise {primary: "a.test", upstream: "http://a", retry: "30s", routes: [{path: "/api/*", upstream: "http://api"}]} (helpers opts)
+
+    let result = domain_route $d (helpers opts) | to json
+
+    assert equal 2 ($result | split row '"try_duration": "30s"' | length | $in - 1)
+}
+
+
 #======================================================================================================================
 # headers_handler
 #======================================================================================================================

@@ -120,6 +120,21 @@ export def validate__allows_wildcard_with_dns_challenge [] {
     assert equal [] $result
 }
 
+export def validate__checks_retry_duration [] {
+    let opts = helpers opts
+    let valid = ["5s" "500ms" "1m" "0s" ""] | each {|r| normalise {primary: "a.test", upstream: "http://a", retry: $r} $opts }
+    let invalid = normalise {primary: "b.test", upstream: "http://b", retry: "5 seconds"} $opts
+
+    assert equal [] (validate $valid $opts | where {|e| $e =~ "retry" })
+    assert ((validate [$invalid] $opts) | any {|e| $e =~ "retry '5 seconds' must be a duration" })
+}
+
+export def normalise__uses_default_retry [] {
+    let result = normalise {primary: "a.test", upstream: "http://a"} (helpers opts)
+
+    assert equal "5s" $result.retry
+}
+
 export def validate__rejects_unknown_challenge [] {
     let opts = helpers opts
     let d = normalise {primary: "a.test", upstream: "http://a", challenge: "tls"} $opts

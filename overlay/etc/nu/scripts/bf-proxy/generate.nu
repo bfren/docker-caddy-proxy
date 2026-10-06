@@ -32,13 +32,20 @@ export def main [
         sites load --force=$force_this $d $opts $sites_dir
     }
 
-    # build and save Caddy configuration
+    # build Caddy configuration and validate it before replacing the current configuration -
+    # so an invalid change never overwrites a working configuration
     let caddy_conf = bf env PROXY_CADDY_CONF
-    build $configs $opts | to json --indent 2 | save --force $caddy_conf
-    bf write debug $" .. saved to ($caddy_conf)." generate
+    let new_conf = $"($caddy_conf).new"
+    build $configs $opts | to json --indent 2 | save --force $new_conf
+    try {
+        validate $new_conf
+    } catch {
+        rm --force $new_conf
+        bf write error $"Caddy configuration is not valid - ($caddy_conf) has not been changed." generate
+    }
 
-    # validate configuration
-    validate $caddy_conf
+    mv --force $new_conf $caddy_conf
+    bf write debug $" .. saved to ($caddy_conf)." generate
     $caddy_conf
 }
 

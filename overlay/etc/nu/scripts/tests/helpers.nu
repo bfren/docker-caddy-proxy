@@ -8,6 +8,7 @@ export def opts []: nothing -> record {
         live: false
         internal_ca: false
         challenge: "http"
+        retry: "5s"
         dns_propagation_delay: ""
         dns_propagation_timeout: ""
         dns_resolvers: []

@@ -58,6 +58,11 @@
                 },
                 "upstream": { "$ref": "#/$defs/upstream" },
                 "lb": { "$ref": "#/$defs/lb" },
+                "retry": {
+                    "type": "string",
+                    "pattern": "^(\\d+(ms|s|m))?$",
+                    "description": "How long to keep retrying an upstream that cannot be reached before showing the maintenance page, e.g. 10s (0s to disable) - defaults to BF_PROXY_UPSTREAM_RETRY."
+                },
                 "challenge": {
                     "description": "ACME challenge used to obtain certificates - defaults to BF_PROXY_ACME_CHALLENGE.",
                     "enum": [ "http", "dns" ]

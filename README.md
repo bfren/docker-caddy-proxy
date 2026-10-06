@@ -16,6 +16,7 @@ This is the successor to [bfren/nginx-proxy](https://github.com/bfren/docker-ngi
 * [Configuration](#configuration)
 * [Custom Domain Configuration](#custom-domain-configuration)
 * [DNS Challenge](#dns-challenge)
+* [Automatic Reload](#automatic-reload)
 * [Helper Functions](#helper-functions)
 * [Migrating from nginx-proxy](#migrating-from-nginx-proxy)
 * [Licence / Copyright](#licence)
@@ -53,6 +54,8 @@ Files and directories in all three volumes are owned by `www` (UID / GID 1000), 
 | `BF_PROXY_DNS_PROPAGATION_TIMEOUT`     | Duration, e.g. 5m     | How long to wait for DNS propagation.                                                                          | *None*                |
 | `BF_PROXY_DNS_RESOLVERS`               | Space-separated IPs   | DNS resolvers used to check propagation, e.g. `1.1.1.1 9.9.9.9`.                                               | *None*                |
 | `BF_PROXY_SSL_REDIRECT_TO_CANONICAL`   | 0 or 1                | Default for `redirectToPrimary` - if 1, aliases are redirected to the primary domain.                          | 0                     |
+| `BF_PROXY_AUTO_RELOAD`                 | 0 or 1                | If 1, configuration is regenerated and reloaded when `conf.json`, `users.json` or `/sites` change.             | 1                     |
+| `BF_PROXY_UPSTREAM_RETRY`              | Duration, e.g. 5s     | How long to keep retrying an upstream that cannot be reached (e.g. while it restarts) - `0s` to disable.       | 5s                    |
 | `BF_PROXY_HARDEN`                      | 0 or 1                | If 1, only TLS 1.3 will be allowed (some older devices may not be able to connect).                            | 0                     |
 | `BF_PROXY_BLOCK_AI_BOTS`               | 0 or 1                | If 1, requests from AI crawlers that collect training data receive 403 Forbidden - see below.                 | 1                     |
 | `BF_PROXY_ACCESS_LOG`                  | 0 or 1                | If 1, access logs are written to the container output.                                                         | 0                     |
@@ -87,6 +90,7 @@ Domains are defined in `/ssl/conf.json` - see `proxy-conf-sample.json` for an ex
 | `primary`           | **Required.**  The primary domain name.                                                                                                           |
 | `aliases`           | Additional host names served by this domain.  Wildcards (e.g. `*.example.com`) require the DNS challenge.                                         |
 | `upstream`          | **Required** (unless `custom`).  URL of the upstream server, e.g. `http://app:5000` - `https` is supported.  Use a list to load balance.          |
+| `retry`             | How long to keep retrying an unreachable upstream before showing the maintenance page, e.g. `10s` (`0s` to disable) - defaults to `BF_PROXY_UPSTREAM_RETRY`. |
 | `lb`                | Load balancing policy for multiple upstreams: `random` (default), `round_robin`, `least_conn`, `first`, `ip_hash`, `uri_hash`, `client_ip_hash`. |
 | `challenge`         | `http` or `dns` - defaults to `BF_PROXY_ACME_CHALLENGE`.                                                                                          |
 | `redirectToPrimary` | Redirect aliases to the primary domain - defaults to `BF_PROXY_SSL_REDIRECT_TO_CANONICAL`.                                                        |
@@ -125,7 +129,7 @@ For every domain:
 * Responses are compressed using zstd or gzip, depending on what the browser supports.  Images and other already-compressed formats, responses under 512 bytes, and responses the upstream has already compressed are left alone.
 * Secure headers are added (`Strict-Transport-Security`, `X-Frame-Options`, `X-Content-Type-Options`, `X-XSS-Protection`), and `X-Clacks-Overhead: GNU Terry Pratchett` - [because he was a legend](http://www.gnuterrypratchett.com).
 * `X-Real-IP` is sent to the upstream, as well as Caddy's standard `X-Forwarded-*` headers.  WebSockets work automatically.
-* If the upstream cannot be reached, or returns 502, 503 or 504, an auto-refreshing maintenance page is shown.
+* If the upstream cannot be reached (after retrying for `retry`, so a quick restart is not noticed), or returns 502, 503 or 504, an auto-refreshing maintenance page is shown.
 * Requests for unknown hosts are redirected to `BF_PROXY_DOMAIN`.
 
 `BF_PROXY_DOMAIN` serves the files in `/www/public`, with static files (images, CSS, JavaScript, fonts etc.) cached for a year, and `/favicon.ico` returning 204 (No Content) unless you add one.
@@ -161,6 +165,12 @@ The DNS challenge allows certificates to be issued for wildcard domains, and for
 3. If certificate requests fail because the record has not propagated, set `BF_PROXY_DNS_PROPAGATION_DELAY` (e.g. `60s`) and / or `BF_PROXY_DNS_RESOLVERS` (e.g. `1.1.1.1`).
 
 The token is not written to the generated configuration files - Caddy reads it from the environment at runtime.
+
+## Automatic Reload
+
+With `BF_PROXY_AUTO_RELOAD=1` (the default), `conf.json`, `users.json` and the `*.json` files in `/sites` are checked every 5 seconds.  When they change (and have stopped changing for 5 seconds, so saving several files only causes one reload) configuration is regenerated and Caddy is reloaded without dropping connections - so there is no need to run `proxy-regenerate`.
+
+If the new configuration is not valid (e.g. a JSON syntax error or a missing upstream), the errors are written to the container log and Caddy keeps running with the current configuration.
 
 ## Helper Functions
 

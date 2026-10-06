@@ -69,6 +69,10 @@ ENV \
     BF_PROXY_DNS_PROPAGATION_TIMEOUT= \
     # optional - space-separated DNS resolvers to use when checking propagation (e.g. "1.1.1.1 9.9.9.9")
     BF_PROXY_DNS_RESOLVERS= \
+    # set to 1 to regenerate and reload configuration automatically when conf.json, users.json or /sites change
+    BF_PROXY_AUTO_RELOAD=1 \
+    # keep retrying upstreams that cannot be reached for this long before showing the maintenance page (0s to disable)
+    BF_PROXY_UPSTREAM_RETRY=5s \
     # set to 1 to allow only TLS 1.3
     BF_PROXY_HARDEN=0 \
     # set to 1 to redirect aliases to the primary domain by default (can be set per domain in conf.json)

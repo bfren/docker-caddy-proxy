@@ -31,6 +31,7 @@ export def parse_upstream [upstream: string]: nothing -> record {
 
 # Build a reverse_proxy handler for one or more upstream URLs
 export def reverse_proxy [
+    --retry: string = ""    # Keep retrying upstreams that cannot be reached for this long, e.g. 5s (empty or 0s to disable)
     upstreams: list<string> # Upstream URLs - must all use the same scheme
     lb: string              # Load balancing selection policy (only used with multiple upstreams)
     public: string          # Public directory containing the maintenance page
@@ -50,9 +51,17 @@ export def reverse_proxy [
         $handler | insert transport {protocol: "http", tls: {}}
     } else { $handler }
 
-    if ($upstreams | length) > 1 {
-        $with_tls | insert load_balancing {selection_policy: {policy: $lb}}
-    } else { $with_tls }
+    # choose between multiple upstreams, and retry upstreams that cannot be reached (e.g. while a container restarts)
+    let load_balancing = {}
+        | merge (if ($upstreams | length) > 1 { {selection_policy: {policy: $lb}} } else { {} })
+        | merge (if (retries $retry) { {try_duration: $retry, try_interval: "250ms"} } else { {} })
+
+    if ($load_balancing | is-empty) { $with_tls } else { $with_tls | insert load_balancing $load_balancing }
+}
+
+# Returns true if $retry is a non-zero duration
+export def retries [retry: string]: nothing -> bool {
+    $retry != "" and not ($retry =~ '^0+(ms|s|m)$')
 }
 
 # Handlers that serve the maintenance page with a 503 status
@@ -107,8 +116,9 @@ export def auth_handler [
 
 # Build a route for an entry in a domain's 'routes' in conf.json
 export def path_route [
-    route: record   # Route definition from conf.json
-    public: string  # Public directory containing the maintenance page
+    --retry: string = ""    # Keep retrying upstreams that cannot be reached for this long (see reverse_proxy)
+    route: record           # Route definition from conf.json
+    public: string          # Public directory containing the maintenance page
 ]: nothing -> record {
     let path = $route | get --optional path
     let match = if ($path | is-empty) { {} } else { {match: [{path: (conf as_list $path)}]} }
@@ -117,7 +127,7 @@ export def path_route [
     let rewrite = if ($strip | is-empty) { [] } else { [{handler: "rewrite", strip_path_prefix: $strip}] }
 
     let action = if ($route | get --optional upstream) != null {
-        reverse_proxy (conf as_list $route.upstream) ($route | get --optional lb | default "random") $public
+        reverse_proxy --retry $retry (conf as_list $route.upstream) ($route | get --optional lb | default "random") $public
     } else if ($route | get --optional redirect) != null {
         {
             handler: "static_response"
@@ -165,9 +175,9 @@ export def domain_route [
     ]
 
     # routes from conf.json, and the default upstream
-    let path_routes = $d.routes | each {|r| path_route $r $opts.public }
+    let path_routes = $d.routes | each {|r| path_route --retry $d.retry $r $opts.public }
     let default = if ($d.upstream | is-empty) { [] } else {
-        [{handle: [(reverse_proxy $d.upstream $d.lb $opts.public)]}]
+        [{handle: [(reverse_proxy --retry $d.retry $d.upstream $d.lb $opts.public)]}]
     }
 
     {
