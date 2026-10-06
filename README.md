@@ -54,7 +54,7 @@ Files and directories in all three volumes are owned by `www` (UID / GID 1000), 
 | `BF_PROXY_DNS_PROPAGATION_TIMEOUT`     | Duration, e.g. 5m     | How long to wait for DNS propagation.                                                                          | *None*                |
 | `BF_PROXY_DNS_RESOLVERS`               | Space-separated IPs   | DNS resolvers used to check propagation, e.g. `1.1.1.1 9.9.9.9`.                                               | *None*                |
 | `BF_PROXY_SSL_REDIRECT_TO_CANONICAL`   | 0 or 1                | Default for `redirectToPrimary` - if 1, aliases are redirected to the primary domain.                          | 0                     |
-| `BF_PROXY_AUTO_RELOAD`                 | 0 or 1                | If 1, configuration is regenerated and reloaded when `conf.json`, `users.json` or `/sites` change.             | 1                     |
+| `BF_PROXY_AUTO_RELOAD`                 | 0 or 1                | If 1, configuration is regenerated and reloaded when `conf.json`, `users.json` or `/sites` change.             | 0                     |
 | `BF_PROXY_UPSTREAM_RETRY`              | Duration, e.g. 5s     | How long to keep retrying an upstream that cannot be reached (e.g. while it restarts) - `0s` to disable.       | 5s                    |
 | `BF_PROXY_HARDEN`                      | 0 or 1                | If 1, only TLS 1.3 will be allowed (some older devices may not be able to connect).                            | 0                     |
 | `BF_PROXY_BLOCK_AI_BOTS`               | 0 or 1                | If 1, requests from AI crawlers that collect training data receive 403 Forbidden - see below.                 | 1                     |
@@ -168,7 +168,9 @@ The token is not written to the generated configuration files - Caddy reads it f
 
 ## Automatic Reload
 
-With `BF_PROXY_AUTO_RELOAD=1` (the default), `conf.json`, `users.json` and the `*.json` files in `/sites` are checked every 5 seconds.  When they change (and have stopped changing for 5 seconds, so saving several files only causes one reload) configuration is regenerated and Caddy is reloaded without dropping connections - so there is no need to run `proxy-regenerate`.
+By default, run `proxy-regenerate` after changing `conf.json`, `users.json` or files in `/sites`.
+
+Set `BF_PROXY_AUTO_RELOAD=1` to do this automatically: `conf.json`, `users.json` and the `*.json` files in `/sites` are checked every 5 seconds.  When they change (and have stopped changing for 5 seconds, so saving several files only causes one reload) configuration is regenerated and Caddy is reloaded without dropping connections.  The checks use about 1 MB of memory and very little CPU.
 
 If the new configuration is not valid (e.g. a JSON syntax error or a missing upstream), the errors are written to the container log and Caddy keeps running with the current configuration.
 
