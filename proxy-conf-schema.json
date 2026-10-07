@@ -1,0 +1,104 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://raw.githubusercontent.com/bfren/docker-caddy-proxy/main/proxy-conf-schema.json",
+    "title": "Caddy Proxy configuration",
+    "description": "Domains served by bfren/caddy-proxy - stored in /ssl/conf.json.",
+    "type": "object",
+    "properties": {
+        "$schema": { "type": "string" },
+        "domains": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/domain" }
+        }
+    },
+    "required": [ "domains" ],
+    "$defs": {
+        "upstream": {
+            "description": "Upstream URL(s) - http or https, with optional port but no path. Multiple upstreams are load balanced.",
+            "oneOf": [
+                { "type": "string", "pattern": "^https?://[^/]+/?$" },
+                { "type": "array", "items": { "type": "string", "pattern": "^https?://[^/]+/?$" }, "minItems": 1 }
+            ]
+        },
+        "lb": {
+            "description": "Load balancing selection policy, used when there are multiple upstreams.",
+            "enum": [ "random", "round_robin", "least_conn", "first", "ip_hash", "uri_hash", "client_ip_hash" ],
+            "default": "random"
+        },
+        "route": {
+            "type": "object",
+            "description": "An additional route - routes are evaluated in order, before the default upstream. Each must have exactly one of upstream, redirect or root.",
+            "properties": {
+                "path": {
+                    "description": "Path matcher(s), e.g. /api/* - if omitted the route matches all requests.",
+                    "oneOf": [ { "type": "string" }, { "type": "array", "items": { "type": "string" } } ]
+                },
+                "upstream": { "$ref": "#/$defs/upstream" },
+                "lb": { "$ref": "#/$defs/lb" },
+                "stripPrefix": { "type": "string", "description": "Prefix to remove from the path before proxying, e.g. /api." },
+                "redirect": { "type": "string", "description": "Redirect to this URL - Caddy placeholders such as {http.request.uri.path} can be used." },
+                "status": { "type": "integer", "description": "Redirect status code.", "default": 301 },
+                "root": { "type": "string", "description": "Serve static files from this directory." }
+            },
+            "oneOf": [
+                { "required": [ "upstream" ] },
+                { "required": [ "redirect" ] },
+                { "required": [ "root" ] }
+            ],
+            "additionalProperties": false
+        },
+        "domain": {
+            "type": "object",
+            "properties": {
+                "primary": { "type": "string", "description": "The primary domain name." },
+                "aliases": {
+                    "type": "array",
+                    "description": "Additional host names - wildcards (e.g. *.example.com) require the dns challenge.",
+                    "items": { "type": "string" }
+                },
+                "upstream": { "$ref": "#/$defs/upstream" },
+                "lb": { "$ref": "#/$defs/lb" },
+                "retry": {
+                    "type": "string",
+                    "pattern": "^(\\d+(ms|s|m))?$",
+                    "description": "How long to keep retrying an upstream that cannot be reached before showing the maintenance page, e.g. 10s (0s to disable) - defaults to BF_PROXY_UPSTREAM_RETRY."
+                },
+                "challenge": {
+                    "description": "ACME challenge used to obtain certificates - defaults to BF_PROXY_ACME_CHALLENGE.",
+                    "enum": [ "http", "dns" ]
+                },
+                "redirectToPrimary": {
+                    "type": "boolean",
+                    "description": "Redirect aliases to the primary domain - defaults to BF_PROXY_SSL_REDIRECT_TO_CANONICAL."
+                },
+                "auth": {
+                    "description": "Enable HTTP basic authentication: true for all users (see proxy-adduser), or a list of user names.",
+                    "oneOf": [ { "type": "boolean" }, { "type": "array", "items": { "type": "string" } } ]
+                },
+                "headers": {
+                    "type": "object",
+                    "description": "Response headers to add or override (the secure headers are always added unless overridden).",
+                    "additionalProperties": { "type": "string" }
+                },
+                "routes": { "type": "array", "items": { "$ref": "#/$defs/route" } },
+                "compress": {
+                    "type": "boolean",
+                    "description": "Compress responses using zstd or gzip (responses the upstream has already compressed are not compressed again).",
+                    "default": true
+                },
+                "clacks": {
+                    "type": "boolean",
+                    "description": "Add the X-Clacks-Overhead: GNU Terry Pratchett response header.",
+                    "default": true
+                },
+                "custom": {
+                    "type": "boolean",
+                    "description": "If true, /sites/<primary>.json is generated only if it does not exist - otherwise it is left alone, giving full control of the domain's configuration.",
+                    "default": false
+                }
+            },
+            "required": [ "primary" ],
+            "additionalProperties": false
+        }
+    }
+}

@@ -1,0 +1,312 @@
+use std assert
+use ../bf-proxy/conf.nu
+use ../bf-proxy/routes.nu *
+use helpers.nu
+
+# Get the subroute routes for a domain route
+def subroutes [route: record]: nothing -> list<record> { $route.handle.0.routes }
+
+
+#======================================================================================================================
+# parse_upstream
+#======================================================================================================================
+
+export def parse_upstream__uses_default_ports [] {
+    assert equal {dial: "app:80", tls: false} (parse_upstream "http://app")
+    assert equal {dial: "app:443", tls: true} (parse_upstream "https://app")
+}
+
+export def parse_upstream__uses_specified_port [] {
+    assert equal {dial: "app:5000", tls: false} (parse_upstream "http://app:5000")
+    assert equal {dial: "10.0.0.1:8443", tls: true} (parse_upstream "https://10.0.0.1:8443/")
+}
+
+
+#======================================================================================================================
+# reverse_proxy
+#======================================================================================================================
+
+export def reverse_proxy__single_http_upstream [] {
+    let result = reverse_proxy ["http://app:5000"] "random" "/www/public"
+
+    assert equal "reverse_proxy" $result.handler
+    assert equal [{dial: "app:5000"}] $result.upstreams
+    assert equal null ($result | get --optional transport)
+    assert equal null ($result | get --optional load_balancing)
+    assert equal [502 503 504] $result.handle_response.0.match.status_code
+}
+
+export def reverse_proxy__https_upstream_uses_tls_transport [] {
+    let result = reverse_proxy ["https://app"] "random" "/www/public"
+
+    assert equal {protocol: "http", tls: {}} $result.transport
+}
+
+export def reverse_proxy__multiple_upstreams_use_load_balancing [] {
+    let result = reverse_proxy ["http://a" "http://b"] "round_robin" "/www/public"
+
+    assert equal [{dial: "a:80"} {dial: "b:80"}] $result.upstreams
+    assert equal "round_robin" $result.load_balancing.selection_policy.policy
+}
+
+
+export def reverse_proxy__retries_unreachable_upstreams [] {
+    let result = reverse_proxy --retry "5s" ["http://a"] "random" "/www/public"
+
+    assert equal {try_duration: "5s", try_interval: "250ms"} $result.load_balancing
+}
+
+export def reverse_proxy__does_not_retry_when_disabled [] {
+    let zero = reverse_proxy --retry "0s" ["http://a"] "random" "/www/public"
+    let empty = reverse_proxy ["http://a"] "random" "/www/public"
+
+    assert equal null ($zero | get --optional load_balancing)
+    assert equal null ($empty | get --optional load_balancing)
+}
+
+export def reverse_proxy__combines_retry_and_load_balancing [] {
+    let result = reverse_proxy --retry "10s" ["http://a" "http://b"] "first" "/www/public"
+
+    assert equal {selection_policy: {policy: "first"}, try_duration: "10s", try_interval: "250ms"} $result.load_balancing
+}
+
+export def domain_route__uses_domain_retry_for_default_and_path_routes [] {
+    let d = conf normalise {primary: "a.test", upstream: "http://a", retry: "30s", routes: [{path: "/api/*", upstream: "http://api"}]} (helpers opts)
+
+    let result = domain_route $d (helpers opts) | to json
+
+    assert equal 2 ($result | split row '"try_duration": "30s"' | length | $in - 1)
+}
+
+
+#======================================================================================================================
+# headers_handler
+#======================================================================================================================
+
+export def headers_handler__adds_secure_headers [] {
+    let result = headers_handler {}
+
+    assert equal ["SAMEORIGIN"] ($result.response.set | get "X-Frame-Options")
+    assert equal ["max-age=63072000"] ($result.response.set | get "Strict-Transport-Security")
+}
+
+export def headers_handler__custom_headers_override_and_extend [] {
+    let result = headers_handler {"X-Frame-Options": "DENY", "X-Extra": "1"}
+
+    assert equal ["DENY"] ($result.response.set | get "X-Frame-Options")
+    assert equal ["1"] ($result.response.set | get "X-Extra")
+}
+
+
+export def headers_handler__adds_clacks_header_when_enabled [] {
+    let with = headers_handler --clacks {}
+    let without = headers_handler {}
+
+    assert equal ["GNU Terry Pratchett"] ($with.response.set | get "X-Clacks-Overhead")
+    assert equal null ($without.response.set | get --optional "X-Clacks-Overhead")
+}
+
+export def domain_route__adds_clacks_header_by_default [] {
+    let result = domain_route (helpers domain) (helpers opts) | to json
+
+    assert str contains $result "GNU Terry Pratchett"
+}
+
+export def domain_route__does_not_add_clacks_header_when_disabled [] {
+    let d = conf normalise {primary: "a.test", upstream: "http://a", clacks: false} (helpers opts)
+
+    let result = domain_route $d (helpers opts) | to json
+
+    assert not ($result =~ "X-Clacks-Overhead")
+}
+
+export def proxy_domain_route__adds_clacks_header [] {
+    let result = proxy_domain_route (helpers opts) | to json
+
+    assert str contains $result "GNU Terry Pratchett"
+}
+
+
+export def domain_route__compresses_responses_by_default [] {
+    let common = domain_route (helpers domain) (helpers opts) | get handle.0.routes | where {|r| ($r | get --optional match) == null } | first
+
+    assert equal "encode" $common.handle.0.handler
+    assert equal ["zstd" "gzip"] $common.handle.0.prefer
+}
+
+export def domain_route__does_not_compress_when_disabled [] {
+    let d = conf normalise {primary: "a.test", upstream: "http://a", compress: false} (helpers opts)
+
+    let result = domain_route $d (helpers opts) | to json
+
+    assert not ($result =~ '"encode"')
+}
+
+export def proxy_domain_route__returns_204_for_missing_favicon [] {
+    let routes = proxy_domain_route (helpers opts) | get handle.0.routes
+    let favicon = $routes | where {|r| ($r | to json) =~ "favicon" } | first
+
+    assert equal ["/favicon.ico"] $favicon.match.0.path
+    assert equal 204 $favicon.handle.0.status_code
+}
+
+export def proxy_domain_route__caches_static_files [] {
+    let result = proxy_domain_route (helpers opts) | to json
+
+    assert str contains $result "public, max-age=31536000"
+    assert str contains $result '"*.css"'
+}
+
+
+export def domain_route__extra_routes_come_after_headers_and_auth [] {
+    let d = conf normalise {primary: "a.test", upstream: "http://a", auth: true} (helpers opts)
+    let extra = {match: [{path: ["/api/*"]}], handle: [{handler: "reverse_proxy", upstreams: [{dial: "api:80"}]}], terminal: true}
+
+    let routes = domain_route --extra-routes [$extra] $d (helpers opts) | get handle.0.routes
+    let auth_index = $routes | enumerate | where {|x| ($x.item | to json) =~ "http_basic" } | first | get index
+    let extra_index = $routes | enumerate | where {|x| ($x.item | to json) =~ "api:80" } | first | get index
+
+    assert ($auth_index < $extra_index)
+}
+
+
+export def domain_route__before_routes_come_before_redirect_bots_and_auth [] {
+    let d = conf normalise {primary: "a.test", upstream: "http://a", aliases: ["b.test"], redirectToPrimary: true, auth: true} (helpers opts)
+    let before = {match: [{path: ["/health"]}], handle: [{handler: "static_response", body: "ok"}], terminal: true}
+
+    let routes = domain_route --before-routes [$before] $d (helpers opts) | get handle.0.routes
+
+    assert equal $before ($routes | first)
+}
+
+
+#======================================================================================================================
+# auth_handler
+#======================================================================================================================
+
+export def auth_handler__true_uses_all_users [] {
+    let users = {bob: "hash1", alice: "hash2"}
+
+    let result = auth_handler true $users
+
+    assert equal ["bob" "alice"] ($result.providers.http_basic.accounts | get username)
+}
+
+export def auth_handler__list_uses_named_users [] {
+    let users = {bob: "hash1", alice: "hash2"}
+
+    let result = auth_handler ["alice"] $users
+
+    assert equal [{username: "alice", password: "hash2"}] $result.providers.http_basic.accounts
+}
+
+
+#======================================================================================================================
+# domain_route
+#======================================================================================================================
+
+export def domain_route__matches_primary_and_aliases [] {
+    let d = conf normalise {primary: "a.test", upstream: "http://a", aliases: ["www.a.test"]} (helpers opts)
+
+    let result = domain_route $d (helpers opts)
+
+    assert equal [{host: ["a.test" "www.a.test"]}] $result.match
+    assert equal true $result.terminal
+    assert equal "subroute" $result.handle.0.handler
+}
+
+export def domain_route__redirects_aliases_to_primary_when_enabled [] {
+    let d = conf normalise {primary: "a.test", upstream: "http://a", aliases: ["www.a.test"], redirectToPrimary: true} (helpers opts)
+
+    let first = domain_route $d (helpers opts) | subroutes $in | first
+
+    assert equal [{not: [{host: ["a.test"]}]}] $first.match
+    assert equal ["https://a.test{http.request.uri}"] $first.handle.0.headers.Location
+}
+
+export def domain_route__does_not_redirect_without_aliases [] {
+    let d = conf normalise {primary: "a.test", upstream: "http://a", redirectToPrimary: true} (helpers opts)
+
+    let result = domain_route $d (helpers opts) | subroutes $in
+
+    assert not ($result | any {|r| ($r | get --optional match | default [] | to json) =~ "not" })
+}
+
+export def domain_route__blocks_ai_bots_when_enabled [] {
+    let d = helpers domain
+    let enabled = domain_route $d (helpers opts) | subroutes $in
+    let disabled = domain_route $d (helpers opts | update block_ai_bots false) | subroutes $in
+
+    assert ($enabled | any {|r| ($r | to json) =~ "GPTBot" })
+    assert not ($disabled | any {|r| ($r | to json) =~ "GPTBot" })
+}
+
+export def domain_route__does_not_block_ai_bots_when_list_is_empty [] {
+    let result = domain_route (helpers domain) (helpers opts | update ai_bots []) | subroutes $in
+
+    assert not ($result | any {|r| ($r | to json) =~ "header_regexp" })
+}
+
+export def domain_route__default_upstream_is_last [] {
+    let routes = [{path: "/api/*", upstream: "http://api", stripPrefix: "/api"}]
+    let d = conf normalise {primary: "a.test", upstream: "http://a", routes: $routes} (helpers opts)
+
+    let result = domain_route $d (helpers opts) | subroutes $in
+    let api = $result | get (($result | length) - 2)
+    let last = $result | last
+
+    assert equal [{path: ["/api/*"]}] $api.match
+    assert equal {handler: "rewrite", strip_path_prefix: "/api"} $api.handle.0
+    assert equal [{dial: "api:80"}] $api.handle.1.upstreams
+    assert equal [{dial: "a:80"}] $last.handle.0.upstreams
+}
+
+export def domain_route__adds_auth_when_enabled [] {
+    let d = conf normalise {primary: "a.test", upstream: "http://a", auth: true} (helpers opts)
+
+    let result = domain_route $d (helpers opts) | to json
+
+    assert str contains $result "http_basic"
+}
+
+
+#======================================================================================================================
+# path_route
+#======================================================================================================================
+
+export def path_route__redirect [] {
+    let result = path_route {path: "/old/*", redirect: "https://a.test/new", status: 302} "/www/public"
+
+    assert equal 302 $result.handle.0.status_code
+    assert equal ["https://a.test/new"] $result.handle.0.headers.Location
+}
+
+export def path_route__file_server [] {
+    let result = path_route {path: "/files/*", root: "/www/files"} "/www/public"
+
+    assert equal {handler: "file_server", root: "/www/files"} $result.handle.0
+}
+
+export def path_route__without_path_matches_everything [] {
+    let result = path_route {upstream: "http://a"} "/www/public"
+
+    assert equal null ($result | get --optional match)
+}
+
+
+#======================================================================================================================
+# error_route / catch_all_route
+#======================================================================================================================
+
+export def error_route__matches_hosts_and_maintenance_codes [] {
+    let result = error_route (helpers domain "a.test") (helpers opts)
+
+    assert equal ["a.test"] $result.match.0.host
+    assert equal "{http.error.status_code} in [502, 503, 504]" $result.match.0.expression
+}
+
+export def catch_all_route__redirects_to_proxy_domain [] {
+    let result = catch_all_route (helpers opts)
+
+    assert equal ["https://proxy.test{http.request.uri}"] $result.handle.0.headers.Location
+}

@@ -1,0 +1,15 @@
+#!/usr/bin/nu
+
+use bf
+use bf-proxy
+bf env load -x
+
+# Add (or replace) a user for HTTP basic authentication, then regenerate configuration and reload Caddy -
+# enable basic authentication for a domain by setting "auth": true (or a list of user names) in conf.json
+def main [
+    username: string    # The user name
+    password: string    # The password
+] {
+    bf-proxy users add $username $password
+    ^proxy-regenerate
+}

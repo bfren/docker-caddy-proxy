@@ -1,0 +1,7 @@
+#!/usr/bin/nu
+
+use bf
+bf env load -x
+
+# Check Caddy is running by requesting its configuration from the admin API
+def main [] { "http://localhost:2019/config/" | bf http test | if not $in { exit 1 } }

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Maintenance</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no" />
+<style type="text/css">
+    * { font-family: Arial, sans-serif; }
+    p.muted { font-size: 0.8rem; font-style: italic; color: #999; }
+</style>
+</head>
+<body>
+<h1>Maintenance</h1>
+<p>The site you requested is temporarily down for maintenance.  Please try again later.</p>
+<p class="muted">This page will auto-refresh in <span id="remaining"><%= "${BF_PROXY_MAINTENANCE_REFRESH_SECONDS}" %></span>s.</p>
+<script type="text/javascript">
+    let remaining = <%= "${BF_PROXY_MAINTENANCE_REFRESH_SECONDS}" %>;
+    let countdown = function () {
+        // reload the page
+        if (remaining == 0) {
+            location.reload(true);
+            return;
+        }
+
+        // update the message and reduce time remaining
+        document.getElementById("remaining").innerText = remaining.toString();
+        remaining--;
+
+        // fire function again in one second
+        setTimeout(countdown, 1000);
+    }
+
+    // fire first time manually
+    countdown();
+</script>
+</body>
+</html>

@@ -1,0 +1,37 @@
+{
+    "$schema": "https://raw.githubusercontent.com/bfren/docker-caddy-proxy/main/proxy-conf-schema.json",
+    "domains": [
+        {
+            "primary": "example.com",
+            "upstream": "http://example:5000",
+            "aliases": [
+                "www.example.com",
+                "ex.com",
+                "www.ex.com"
+            ],
+            "redirectToPrimary": true
+        },
+        {
+            "primary": "test.com",
+            "upstream": "http://test",
+            "aliases": [
+                "*.test.com"
+            ],
+            "challenge": "dns",
+            "routes": [
+                { "path": "/api/*", "upstream": [ "http://api1:8080", "http://api2:8080" ], "lb": "round_robin", "stripPrefix": "/api" },
+                { "path": "/old/*", "redirect": "https://test.com/new{http.request.uri.path}" },
+                { "path": "/files/*", "root": "/www/files" }
+            ],
+            "headers": {
+                "X-Frame-Options": "DENY"
+            }
+        },
+        {
+            "primary": "private.example.com",
+            "upstream": "https://private:8443",
+            "auth": true,
+            "custom": true
+        }
+    ]
+}

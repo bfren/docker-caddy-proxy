@@ -1,0 +1,4 @@
+/etc/caddy www:www 0400 0500
+/sites www:www 0644 0755
+/ssl www:www 0600 0700
+/www www:www 0644 0755

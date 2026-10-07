@@ -1,0 +1,32 @@
+#!/usr/bin/nu
+
+use bf
+use bf-proxy bots
+
+# Setup and install Caddy
+def main [] {
+    # add www user - Caddy runs as this user so mapped volumes are owned by (and editable by) UID 1000
+    bf user add www
+
+    # save Caddy version to build log
+    let version = { ^caddy version }
+        | bf handle install
+        | split row " "
+        | first
+        | str replace "v" ""
+    bf write $"Caddy ($version) installed."
+    bf build add Caddy $version
+
+    # create directories
+    bf write "Creating directories."
+    mkdir /etc/caddy /sites /ssl /usr/share/caddy-proxy /www
+
+    # download the list of AI training crawlers (version is set by the AI_ROBOTS_VERSION build argument)
+    let ai_robots_version = $env | get --optional AI_ROBOTS_VERSION | default ""
+    if $ai_robots_version == "" { bf write error "AI_ROBOTS_VERSION must be set." install }
+    bots download $ai_robots_version "/usr/share/caddy-proxy/ai-bots.txt"
+    bf build add "ai.robots.txt" $ai_robots_version
+
+    # add bf-proxy module to config
+    bf config use_mod bf-proxy
+}

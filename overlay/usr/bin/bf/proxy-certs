@@ -1,0 +1,16 @@
+#!/usr/bin/nu
+
+use bf
+use bf-proxy
+bf env load -x
+
+# List certificates managed by Caddy, with their issuer and expiry date
+def main [] {
+    let certs = bf-proxy certs (bf env PROXY_STORAGE)
+    if ($certs | is-empty) {
+        bf write "No certificates found - Caddy obtains them when it starts (see the container log)."
+        return
+    }
+
+    bf-proxy certs display $certs | print
+}

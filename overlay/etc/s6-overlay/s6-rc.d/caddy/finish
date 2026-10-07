@@ -1,0 +1,10 @@
+#!/usr/bin/nu
+
+use bf
+use bf-s6
+bf env load -x caddy
+
+# Terminate the container when Caddy stops
+def main [...args] {
+    bf-s6 svc finish --terminate
+}
