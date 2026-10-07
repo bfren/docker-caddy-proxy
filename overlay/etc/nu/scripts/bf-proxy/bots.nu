@@ -49,7 +49,9 @@ export def download [
     }
 
     let agents = select_training $robots
-    if ($agents | is-empty) { bf write error "No AI training crawlers found." bots/download }
+    if ($agents | is-empty) {
+        bf write notok "No AI training crawlers found, will save empty list." bots/download
+    }
 
     $agents | str join (char newline) | save --force $path
     bf write $" .. saved ($agents | length) of ($robots | columns | length) crawlers to ($path)." bots/download
@@ -59,7 +61,7 @@ export def download [
 export def load [
     path: string    # Path to the list
 ]: nothing -> list<string> {
-    if $path == "" or ($path | bf fs is_not_file) { return [] }
+    if ($path | bf fs is_not_file) { return [] }
     open --raw $path
         | lines
         | each {|x| $x | str trim }

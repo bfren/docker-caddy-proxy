@@ -15,13 +15,22 @@ export def main [
 export def days_until [
     date: any   # Date (or date string)
 ]: nothing -> int {
-    ($date | into datetime) - (date now) | into int | $in / 86_400_000_000_000 | math floor
+    ($date | into datetime) - (date now) | $in / 1day | math floor
 }
 
 # Format the certificate list for display
 export def display [
     certs: table    # Certificates from main
 ]: nothing -> table {
+    let get_status = {|days_left|
+        if $days_left < 0 {
+             "expired"
+        } else if $days_left <= $warn_days {
+            "renew soon"
+        } else {
+            "ok"
+        }
+    }
     $certs
         | sort-by days_left
         | each {|c|
@@ -30,7 +39,7 @@ export def display [
                 issuer: $c.issuer
                 expires: ($c.not_after | into datetime | format date "%Y-%m-%d %H:%M")
                 days_left: $c.days_left
-                status: (if $c.days_left < 0 { "expired" } else if $c.days_left <= $warn_days { "renew soon" } else { "ok" })
+                status: ($c.days_left | $get_status)
             }
         }
 }

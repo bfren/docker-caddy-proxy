@@ -121,13 +121,13 @@ export def path_route [
     public: string          # Public directory containing the maintenance page
 ]: nothing -> record {
     let path = $route | get --optional path
-    let match = if ($path | is-empty) { {} } else { {match: [{path: (conf as_list $path)}]} }
+    let match = if ($path | is-empty) { {} } else { {match: [{path: ($path | conf as_list)}]} }
 
     let strip = $route | get --optional stripPrefix
     let rewrite = if ($strip | is-empty) { [] } else { [{handler: "rewrite", strip_path_prefix: $strip}] }
 
     let action = if ($route | get --optional upstream) != null {
-        reverse_proxy --retry $retry (conf as_list $route.upstream) ($route | get --optional lb | default "random") $public
+        reverse_proxy --retry $retry ($route.upstream | conf as_list) ($route | get --optional lb | default "random") $public
     } else if ($route | get --optional redirect) != null {
         {
             handler: "static_response"
@@ -176,7 +176,9 @@ export def domain_route [
 
     # routes from conf.json, and the default upstream
     let path_routes = $d.routes | each {|r| path_route --retry $d.retry $r $opts.public }
-    let default = if ($d.upstream | is-empty) { [] } else {
+    let default = if ($d.upstream | is-empty) {
+        []
+    } else {
         [{handle: [(reverse_proxy --retry $d.retry $d.upstream $d.lb $opts.public)]}]
     }
 

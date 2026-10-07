@@ -61,7 +61,9 @@ export def build [
         (routes catch_all_route $opts)
     ]
 
-    let error_routes = $configs | each {|c| $c | get --optional errors } | where $it != null
+    let error_routes = $configs
+        | each {|c| $c | get --optional errors }
+        | where $it != null
 
     # TLS automation: one policy per domain, then the proxy domain, then a default policy for any other names
     let policies = [
@@ -104,7 +106,9 @@ export def build [
 
 # Validate a Caddy configuration file - as the www user, so anything Caddy creates while validating is owned by www
 export def validate [path: string]: nothing -> nothing {
-    let ok = { bf write ok "Caddy configuration is valid." generate/validate }
+    let ok = {||
+        bf write ok "Caddy configuration is valid." generate/validate
+    }
     let fail = {|code, err|
         $err | print --stderr
         bf write error $"Caddy configuration ($path) is not valid." generate/validate

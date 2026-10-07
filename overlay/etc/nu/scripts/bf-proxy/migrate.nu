@@ -54,12 +54,22 @@ export def convert_domain [
 
     # warn about anything that cannot be converted automatically
     mut warnings = []
-    let unknown = $domain | columns | where {|k| $k not-in $nginx_proxy_keys }
+    let unknown = $domain
+        | columns
+        | where {|k| $k not-in $nginx_proxy_keys }
     if ($unknown | is-not-empty) {
-        $warnings = $warnings | append $"($primary): removed unsupported keys ($unknown | str join ', ')."
+        $warnings = $warnings
+            | append $"($primary): removed unsupported keys ($unknown
+            | str join ', ')."
     }
     if $upstream != "" {
-        let path = try { $upstream | url parse | get path } catch { "" }
+        let path = try {
+            $upstream
+                | url parse
+                | get path
+        } catch {
+            ""
+        }
         if $path not-in ["" "/"] {
             $warnings = $warnings | append $"($primary): upstream '($upstream)' includes a path, which is not supported - use a route with stripPrefix, or a custom domain configuration."
         }

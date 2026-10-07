@@ -186,10 +186,10 @@ export def failures__adds_prefix [] {
 #======================================================================================================================
 
 export def as_list__converts_values_to_lists [] {
-    assert equal [] (as_list null)
-    assert equal [] (as_list "  ")
-    assert equal ["http://a"] (as_list "http://a")
-    assert equal ["http://a" "http://b"] (as_list ["http://a" "" "http://b"])
+    assert equal [] (null | as_list)
+    assert equal [] ("  " | as_list)
+    assert equal ["http://a"] ("http://a" | as_list)
+    assert equal ["http://a" "http://b"] (["http://a" "" "http://b"] | as_list)
 }
 
 
