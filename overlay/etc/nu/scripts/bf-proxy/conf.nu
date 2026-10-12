@@ -84,12 +84,12 @@ export def normalise [
             | get --optional primary
             | default ""
             | str trim
-            | str downcase
+            | str lowercase
         )
         aliases: ($d
             | get --optional aliases
             | default []
-            | each {|x| $x | str trim | str downcase }
+            | each {|x| $x | str trim | str lowercase }
             | where $it != ""
         )
         upstream: ($d

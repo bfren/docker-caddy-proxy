@@ -1,21 +1,32 @@
-#!/bin/withenv sh
+#!/usr/bin/nu
 
-set -euo pipefail
+use bf
+use bf-proxy ["generate validate"]
+use bf-s6
+bf env load
 
-
-#======================================================================================================================
-# Run preflight checks
-#======================================================================================================================
-
-nu -c "use bf-proxy run ; run preflight"
-
-
-#======================================================================================================================
 # Start Caddy as a foreground service, running as the www user
-# Docker allows unprivileged users to bind to ports 80 and 443 by default (net.ipv4.ip_unprivileged_port_start=0)
-# Caddy's config and data directories are set so anything not covered by the generated configuration is kept in /ssl
-#======================================================================================================================
+def main [
+    name: string    # The service name, passed by s6-supervise
+] {
+    # set executable name - used to make log output more useful
+    bf env x_set --override run $name
 
-export XDG_CONFIG_HOME="${BF_PROXY_STORAGE}/config"
-export XDG_DATA_HOME="${BF_PROXY_STORAGE}/data"
-exec s6-setuidgid www caddy run --config "${BF_PROXY_CADDY_CONF}"
+    # run checks before executing service
+    let conf = bf env PROXY_CADDY_CONF
+    generate validate $conf
+
+    # Docker allows unprivileged users to bind to ports 80 and 443 by default (net.ipv4.ip_unprivileged_port_start=0)
+    # Caddy's config and data directories are set so anything not covered by the generated configuration is kept in /ssl
+    let storage = bf env PROXY_STORAGE
+    $env.XDG_CONFIG_HOME = $"($storage)/config"
+    $env.XDG_DATA_HOME = $"($storage)/data"
+
+    # launch Caddy service
+    bf write "Starting Caddy in foreground mode."
+    let args = [
+        "run"
+        "--config" $conf
+    ]
+    bf-s6 svc launch s6-setuidgid www caddy ...$args
+}

@@ -1,8 +1,8 @@
-export module bots.nu
-export module certs.nu
-export module conf.nu
-export module generate.nu
-export module migrate.nu
-export module routes.nu
-export module sites.nu
-export module tls.nu
+export use bots.nu
+export use certs.nu
+export use conf.nu
+export use generate.nu
+export use migrate.nu
+export use routes.nu
+export use sites.nu
+export use tls.nu

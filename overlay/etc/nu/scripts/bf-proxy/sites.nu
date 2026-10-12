@@ -106,6 +106,6 @@ export def load_extras [
         | sort --natural
     $files | each {|f|
         let json = conf open_json $f sites/load_extras
-        if ($json | describe | str starts-with "list") { $json } else { [$json] }
+        if ($json | describe --detailed | get type) == "list" { $json } else { [$json] }
     } | reduce --fold [] {|it, acc| $acc | append $it }
 }
