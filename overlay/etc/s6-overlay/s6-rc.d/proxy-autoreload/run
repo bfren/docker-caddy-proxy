@@ -46,7 +46,7 @@ while true ; do
     sleep ${INTERVAL}
     [ "$(fingerprint)" != "${CURRENT}" ] && continue
 
-    nu -c "use bf-proxy autoreload ; autoreload"
+    nu -c "use bf-proxy [autoreload] ; autoreload"
 
     # take the fingerprint again because regenerating rewrites generated files in the sites directory
     LAST=$(fingerprint)
