@@ -21,7 +21,7 @@ export def is_training [
         | default ""
         | str trim
     if ($function =~ $not_training_pattern) { return false }
-    ($function | str downcase) in $training_categories or ($function =~ $training_pattern)
+    ($function | str lowercase) in $training_categories or ($function =~ $training_pattern)
 }
 
 # Select the user agents of crawlers that collect training data from the contents of robots.json
