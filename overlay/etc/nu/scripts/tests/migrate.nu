@@ -97,7 +97,7 @@ export def main__converts_file_and_keeps_backup [] {
     nginx_proxy_conf | to json | save $path
     let original = open --raw $path
 
-    main $path
+    migrate $path
 
     assert equal $original (open --raw $"($path).nginx-proxy")
     assert equal $conf.schema (open $path | get "$schema")
@@ -109,7 +109,7 @@ export def main__does_not_change_caddy_proxy_file [] {
     {"$schema": $conf.schema, domains: [{primary: "a.test", upstream: "http://a", challenge: "dns"}]} | to json | save $path
     let original = open --raw $path
 
-    main $path
+    migrate $path
 
     assert equal $original (open --raw $path)
     assert not ($"($path).nginx-proxy" | path exists)
@@ -121,7 +121,7 @@ export def main__does_not_overwrite_existing_backup [] {
     "earlier backup" | save $"($path).nginx-proxy"
     nginx_proxy_conf | to json | save $path
 
-    main $path
+    migrate $path
 
     assert equal "earlier backup" (open --raw $"($path).nginx-proxy")
     assert equal 2 (glob $"($path).nginx-proxy*" | length)

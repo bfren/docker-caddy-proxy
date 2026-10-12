@@ -39,7 +39,7 @@ export def display [
                 issuer: $c.issuer
                 expires: ($c.not_after | into datetime | format date "%Y-%m-%d %H:%M")
                 days_left: $c.days_left
-                status: ($c.days_left | $get_status)
+                status: (do $get_status $c.days_left)
             }
         }
 }
