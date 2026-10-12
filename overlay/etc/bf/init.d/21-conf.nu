@@ -1,6 +1,6 @@
 use bf
-use bf-proxy conf *
-use bf-proxy migrate
+use bf-proxy/conf.nu [schema]
+use bf-proxy [migrate]
 bf env load
 
 # Clean existing configuration (if requested), convert an nginx-proxy conf.json (if found),

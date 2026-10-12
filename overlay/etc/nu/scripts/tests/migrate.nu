@@ -1,4 +1,4 @@
-use std assert
+use std/assert
 use ../bf-proxy/conf.nu
 use ../bf-proxy/migrate.nu *
 use helpers.nu
