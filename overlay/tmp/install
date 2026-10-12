@@ -1,7 +1,7 @@
 #!/usr/bin/nu
 
 use bf
-use bf-proxy bots
+use bf-proxy [bots]
 
 # Setup and install Caddy
 def main [] {
