@@ -31,7 +31,14 @@ export def normalise__applies_defaults_from_opts [] {
     assert equal [] $result.routes
     assert equal true $result.clacks
     assert equal true $result.compress
+    assert equal false $result.tls_skip_verify
     assert equal "" $result.dns_override
+}
+
+export def normalise__tls_skip_verify_can_be_enabled [] {
+    let result = normalise {primary: "a.test", upstream: "https://a", tlsSkipVerify: true} (helpers opts)
+
+    assert equal true $result.tls_skip_verify
 }
 
 export def normalise__clacks_can_be_disabled [] {

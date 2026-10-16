@@ -143,6 +143,10 @@ export def normalise [
             | get --optional compress
             | default true
         )
+        tls_skip_verify: ($d
+            | get --optional tlsSkipVerify
+            | default false
+        )
         custom: ($d
             | get --optional custom
             | default false

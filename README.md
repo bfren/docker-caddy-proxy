@@ -103,6 +103,7 @@ Domains are defined in `/ssl/conf.json` - see `proxy-conf-sample.json` for an ex
 | `routes`            | Additional routes, evaluated in order before the default upstream - see below.                                                                               |
 | `compress`          | Set to `false` to stop responses being compressed (zstd or gzip, on by default).                                                                             |
 | `clacks`            | Set to `false` to remove the `X-Clacks-Overhead: GNU Terry Pratchett` response header (added by default).                                                    |
+| `tlsSkipVerify`     | Set to `true` to skip verifying the certificates of `https` upstreams (including `routes`), e.g. self-signed devices on a trusted network.                   |
 | `custom`            | See [Custom Domain Configuration](#custom-domain-configuration).                                                                                             |
 
 Existing `conf.json` files from nginx-proxy (using `primary`, `upstream`, `aliases` and `custom`) work without changes.

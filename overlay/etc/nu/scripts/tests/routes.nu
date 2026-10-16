@@ -42,6 +42,18 @@ export def reverse_proxy__https_upstream_uses_tls_transport [] {
     assert equal {protocol: "http", tls: {}} $result.transport
 }
 
+export def reverse_proxy__tls_skip_verify_disables_certificate_checks [] {
+    let result = reverse_proxy --tls-skip-verify ["https://app"] "random" "/www/public"
+
+    assert equal {protocol: "http", tls: {insecure_skip_verify: true}} $result.transport
+}
+
+export def reverse_proxy__tls_skip_verify_is_ignored_for_http_upstreams [] {
+    let result = reverse_proxy --tls-skip-verify ["http://app"] "random" "/www/public"
+
+    assert equal null ($result | get --optional transport)
+}
+
 export def reverse_proxy__multiple_upstreams_use_load_balancing [] {
     let result = reverse_proxy ["http://a" "http://b"] "round_robin" "/www/public"
 
@@ -76,6 +88,22 @@ export def domain_route__uses_domain_retry_for_default_and_path_routes [] {
     let result = domain_route $d (helpers opts) | to json
 
     assert equal 2 ($result | split row '"try_duration": "30s"' | length | $in - 1)
+}
+
+export def domain_route__uses_tls_skip_verify_for_default_and_path_routes [] {
+    let d = conf normalise {primary: "a.test", upstream: "https://a", tlsSkipVerify: true, routes: [{path: "/api/*", upstream: "https://api"}]} (helpers opts)
+
+    let result = domain_route $d (helpers opts) | to json
+
+    assert equal 2 ($result | split row '"insecure_skip_verify": true' | length | $in - 1)
+}
+
+export def domain_route__verifies_upstream_certificates_by_default [] {
+    let d = conf normalise {primary: "a.test", upstream: "https://a"} (helpers opts)
+
+    let result = domain_route $d (helpers opts) | to json
+
+    assert equal false ($result | str contains "insecure_skip_verify")
 }
 
 
