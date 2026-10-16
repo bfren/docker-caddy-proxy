@@ -1,0 +1,12 @@
+#!/usr/bin/nu
+
+use bf
+use bf-proxy
+bf env load -x
+
+# Delete certificates and restart Caddy, so it requests new ones
+def main [
+    --domain (-d): string = ""  # Only renew certificates for this domain (its primary and aliases)
+] {
+    bf-proxy renew --domain $domain
+}
