@@ -31,6 +31,7 @@ export def normalise__applies_defaults_from_opts [] {
     assert equal [] $result.routes
     assert equal true $result.clacks
     assert equal true $result.compress
+    assert equal "" $result.dns_override
 }
 
 export def normalise__clacks_can_be_disabled [] {
@@ -118,6 +119,57 @@ export def validate__allows_wildcard_with_dns_challenge [] {
     let result = validate [$d] $opts
 
     assert equal [] $result
+}
+
+export def validate__allows_dns_override_domain_with_dns_challenge [] {
+    let opts = helpers opts
+    let d = normalise {primary: "a.test", upstream: "http://a", challenge: "dns", dnsOverrideDomain: " B.Acme.Test "} $opts
+
+    let result = validate [$d] $opts
+
+    assert equal "b.acme.test" $d.dns_override
+    assert equal [] $result
+}
+
+export def validate__dns_override_domain_requires_dns_challenge [] {
+    let opts = helpers opts
+    let d = normalise {primary: "a.test", upstream: "http://a", dnsOverrideDomain: "b.acme.test"} $opts
+
+    let result = validate [$d] $opts
+
+    assert equal ["a.test: dnsOverrideDomain requires the dns challenge."] $result
+}
+
+export def normalise__uses_default_dns_override_domain_with_dns_challenge [] {
+    let opts = helpers opts | update dns_override "b.acme.test"
+
+    let dns = normalise {primary: "a.test", upstream: "http://a", challenge: "dns"} $opts
+    let http = normalise {primary: "a.test", upstream: "http://a"} $opts
+
+    assert equal "b.acme.test" $dns.dns_override
+    assert equal "" $http.dns_override
+    assert equal [] (validate [$http] $opts)
+}
+
+export def normalise__domain_dns_override_domain_replaces_default [] {
+    let opts = helpers opts | update challenge "dns" | update dns_override "b.acme.test"
+
+    let other = normalise {primary: "a.test", upstream: "http://a", dnsOverrideDomain: "c.acme.test"} $opts
+    let disabled = normalise {primary: "a.test", upstream: "http://a", dnsOverrideDomain: ""} $opts
+
+    assert equal "c.acme.test" $other.dns_override
+    assert equal "" $disabled.dns_override
+}
+
+export def validate__dns_override_domain_must_be_a_host_name [] {
+    let opts = helpers opts
+    let invalid = ["https://b.acme.test" "*.acme.test" "acme" "b.acme.test/x" "b..acme.test"]
+
+    $invalid | each {|x|
+        let d = normalise {primary: "a.test", upstream: "http://a", challenge: "dns", dnsOverrideDomain: $x} $opts
+        let result = validate [$d] $opts
+        assert ($result | any {|e| $e | str contains "must be a host name" }) $"($x) should be rejected"
+    } | ignore
 }
 
 export def validate__checks_retry_duration [] {
@@ -228,6 +280,12 @@ export def check_env__does_not_require_email_with_internal_ca [] {
     let result = check_env [] $opts
 
     assert equal [] $result
+}
+
+export def check_env__checks_default_dns_override_domain [] {
+    let result = check_env [] (helpers opts | update dns_override "*.acme.test")
+
+    assert ($result | any {|e| $e | str contains "BF_PROXY_DNS_OVERRIDE_DOMAIN" })
 }
 
 export def check_env__requires_desec_token_for_dns_challenge [] {

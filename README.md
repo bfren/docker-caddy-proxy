@@ -33,11 +33,11 @@ Caddy runs as the `www` user (UID 1000), not root, and no extra capabilities are
 
 ## Volumes
 
-| Volume   | Purpose                                                                                                                                                    |
-| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Volume   | Purpose                                                                                                                                                  |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/ssl`   | Your `conf.json` file (see `proxy-conf-sample.json`), basic auth users (`users.json`), and Caddy's certificates and ACME account data (in `/ssl/caddy`). |
-| `/sites` | Per-domain Caddy configuration, generated from `conf.json` - see [Custom Domain Configuration](#custom-domain-configuration).                               |
-| `/www`   | `/www/public` is served for `BF_PROXY_DOMAIN`, and contains the maintenance page shown when upstream servers are unavailable.                               |
+| `/sites` | Per-domain Caddy configuration, generated from `conf.json` - see [Custom Domain Configuration](#custom-domain-configuration).                            |
+| `/www`   | `/www/public` is served for `BF_PROXY_DOMAIN`, and contains the maintenance page shown when upstream servers are unavailable.                            |
 
 Files and directories in all three volumes are owned by `www` (UID / GID 1000), so they can be edited by the main user account on the host.
 
@@ -53,11 +53,12 @@ Files and directories in all three volumes are owned by `www` (UID / GID 1000), 
 | `BF_PROXY_DNS_PROPAGATION_DELAY`       | Duration, e.g. 60s    | Time to wait after creating the DNS record before checking for propagation.                                    | *None*                |
 | `BF_PROXY_DNS_PROPAGATION_TIMEOUT`     | Duration, e.g. 5m     | How long to wait for DNS propagation.                                                                          | *None*                |
 | `BF_PROXY_DNS_RESOLVERS`               | Space-separated IPs   | DNS resolvers used to check propagation, e.g. `1.1.1.1 9.9.9.9`.                                               | *None*                |
+| `BF_PROXY_DNS_OVERRIDE_DOMAIN`         | Host name             | Default for `dnsOverrideDomain` - see [DNS Challenge](#dns-challenge).                                         | *None*                |
 | `BF_PROXY_SSL_REDIRECT_TO_CANONICAL`   | 0 or 1                | Default for `redirectToPrimary` - if 1, aliases are redirected to the primary domain.                          | 0                     |
 | `BF_PROXY_AUTO_RELOAD`                 | 0 or 1                | If 1, configuration is regenerated and reloaded when `conf.json`, `users.json` or `/sites` change.             | 0                     |
 | `BF_PROXY_UPSTREAM_RETRY`              | Duration, e.g. 5s     | How long to keep retrying an upstream that cannot be reached (e.g. while it restarts) - `0s` to disable.       | 5s                    |
 | `BF_PROXY_HARDEN`                      | 0 or 1                | If 1, only TLS 1.3 will be allowed (some older devices may not be able to connect).                            | 0                     |
-| `BF_PROXY_BLOCK_AI_BOTS`               | 0 or 1                | If 1, requests from AI crawlers that collect training data receive 403 Forbidden - see below.                 | 1                     |
+| `BF_PROXY_BLOCK_AI_BOTS`               | 0 or 1                | If 1, requests from AI crawlers that collect training data receive 403 Forbidden - see below.                  | 1                     |
 | `BF_PROXY_ACCESS_LOG`                  | 0 or 1                | If 1, access logs are written to the container output.                                                         | 0                     |
 | `BF_PROXY_CLEAN_INSTALL`               | 0 or 1                | If 1, all domain configuration and certificates are deleted on startup.                                        | 0                     |
 | `BF_PROXY_USE_INTERNAL_CA`             | 0 or 1                | If 1, Caddy's internal CA issues (untrusted) certificates instead of Let's Encrypt - for testing / local use.  | 0                     |
@@ -85,21 +86,22 @@ Domains are defined in `/ssl/conf.json` - see `proxy-conf-sample.json` for an ex
 }
 ```
 
-| Property            | Description                                                                                                                                       |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `primary`           | **Required.**  The primary domain name.                                                                                                           |
-| `aliases`           | Additional host names served by this domain.  Wildcards (e.g. `*.example.com`) require the DNS challenge.                                         |
-| `upstream`          | **Required** (unless `custom`).  URL of the upstream server, e.g. `http://app:5000` - `https` is supported.  Use a list to load balance.          |
+| Property            | Description                                                                                                                                                  |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `primary`           | **Required.**  The primary domain name.                                                                                                                      |
+| `aliases`           | Additional host names served by this domain.  Wildcards (e.g. `*.example.com`) require the DNS challenge.                                                    |
+| `upstream`          | **Required** (unless `custom`).  URL of the upstream server, e.g. `http://app:5000` - `https` is supported.  Use a list to load balance.                     |
 | `retry`             | How long to keep retrying an unreachable upstream before showing the maintenance page, e.g. `10s` (`0s` to disable) - defaults to `BF_PROXY_UPSTREAM_RETRY`. |
-| `lb`                | Load balancing policy for multiple upstreams: `random` (default), `round_robin`, `least_conn`, `first`, `ip_hash`, `uri_hash`, `client_ip_hash`. |
-| `challenge`         | `http` or `dns` - defaults to `BF_PROXY_ACME_CHALLENGE`.                                                                                          |
-| `redirectToPrimary` | Redirect aliases to the primary domain - defaults to `BF_PROXY_SSL_REDIRECT_TO_CANONICAL`.                                                        |
-| `auth`              | Enable HTTP basic auth: `true` for all users, or a list of user names - see `proxy-adduser`.                                                      |
-| `headers`           | Response headers to add or override, e.g. `{ "X-Frame-Options": "DENY" }`.                                                                        |
-| `routes`            | Additional routes, evaluated in order before the default upstream - see below.                                                                   |
-| `compress`          | Set to `false` to stop responses being compressed (zstd or gzip, on by default).                                                                |
-| `clacks`            | Set to `false` to remove the `X-Clacks-Overhead: GNU Terry Pratchett` response header (added by default).                                       |
-| `custom`            | See [Custom Domain Configuration](#custom-domain-configuration).                                                                                  |
+| `lb`                | Load balancing policy for multiple upstreams: `random` (default), `round_robin`, `least_conn`, `first`, `ip_hash`, `uri_hash`, `client_ip_hash`.             |
+| `challenge`         | `http` or `dns` - defaults to `BF_PROXY_ACME_CHALLENGE`.                                                                                                     |
+| `dnsOverrideDomain` | Create the DNS challenge record here instead of `_acme-challenge.<host>` - defaults to `BF_PROXY_DNS_OVERRIDE_DOMAIN` (`""` to disable).                     |
+| `redirectToPrimary` | Redirect aliases to the primary domain - defaults to `BF_PROXY_SSL_REDIRECT_TO_CANONICAL`.                                                                   |
+| `auth`              | Enable HTTP basic auth: `true` for all users, or a list of user names - see `proxy-adduser`.                                                                 |
+| `headers`           | Response headers to add or override, e.g. `{ "X-Frame-Options": "DENY" }`.                                                                                   |
+| `routes`            | Additional routes, evaluated in order before the default upstream - see below.                                                                               |
+| `compress`          | Set to `false` to stop responses being compressed (zstd or gzip, on by default).                                                                             |
+| `clacks`            | Set to `false` to remove the `X-Clacks-Overhead: GNU Terry Pratchett` response header (added by default).                                                    |
+| `custom`            | See [Custom Domain Configuration](#custom-domain-configuration).                                                                                             |
 
 Existing `conf.json` files from nginx-proxy (using `primary`, `upstream`, `aliases` and `custom`) work without changes.
 
@@ -107,11 +109,11 @@ Existing `conf.json` files from nginx-proxy (using `primary`, `upstream`, `alias
 
 Each route can have a `path` matcher (e.g. `/api/*` - if omitted the route matches everything) and must have exactly one of:
 
-| Action     | Description                                                                                                                   |
-| ---------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Action     | Description                                                                                                                    |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | `upstream` | Proxy to this upstream (or list of upstreams, with optional `lb`).  Add `stripPrefix` to remove a path prefix before proxying. |
-| `redirect` | Redirect to this URL (default status 301, set `status` to change).  Caddy placeholders such as `{http.request.uri.path}` work.  |
-| `root`     | Serve static files from this directory (mount it into the container).                                                         |
+| `redirect` | Redirect to this URL (default status 301, set `status` to change).  Caddy placeholders such as `{http.request.uri.path}` work. |
+| `root`     | Serve static files from this directory (mount it into the container).                                                          |
 
 ```json
 "routes": [
@@ -163,6 +165,8 @@ The DNS challenge allows certificates to be issued for wildcard domains, and for
 1. Create a token in your deSEC account with permission to manage the relevant domains.
 2. Set `BF_PROXY_DESEC_TOKEN` to the token, and either set `BF_PROXY_ACME_CHALLENGE=dns` or `"challenge": "dns"` for each domain.
 3. If certificate requests fail because the record has not propagated, set `BF_PROXY_DNS_PROPAGATION_DELAY` (e.g. `60s`) and / or `BF_PROXY_DNS_RESOLVERS` (e.g. `1.1.1.1`).
+
+If a domain is hosted with another DNS provider, delegate the challenge to a zone on deSEC: add a CNAME record from `_acme-challenge.<host>` to a name in that zone (e.g. `acme.example.net`), then set `"dnsOverrideDomain": "acme.example.net"` for the domain, or `BF_PROXY_DNS_OVERRIDE_DOMAIN` for every domain using the DNS challenge.  Caddy does not follow the CNAME itself, so the override is required.  It applies to the primary domain and all its aliases, so their CNAME records must point to the same name.
 
 The token is not written to the generated configuration files - Caddy reads it from the environment at runtime.
 

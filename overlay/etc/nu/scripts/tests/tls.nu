@@ -37,6 +37,18 @@ export def issuer__dns_uses_desec_and_disables_other_challenges [] {
 }
 
 
+export def issuer__dns_uses_override_domain [] {
+    let result = issuer --dns-override "b.acme.test" "dns" (helpers opts)
+
+    assert equal "b.acme.test" $result.challenges.dns.override_domain
+}
+
+export def issuer__http_ignores_override_domain [] {
+    let result = issuer --dns-override "b.acme.test" "http" (helpers opts)
+
+    assert equal null ($result | get --optional challenges)
+}
+
 #======================================================================================================================
 # dns_challenge
 #======================================================================================================================
@@ -70,6 +82,12 @@ export def policy__includes_subjects [] {
 
     assert equal ["a.test" "*.a.test"] $result.subjects
     assert equal 1 ($result.issuers | length)
+}
+
+export def policy__passes_override_domain_to_issuer [] {
+    let result = policy --dns-override "b.acme.test" ["a.test"] "dns" (helpers opts)
+
+    assert equal "b.acme.test" $result.issuers.0.challenges.dns.override_domain
 }
 
 export def policy__without_subjects_is_default_policy [] {

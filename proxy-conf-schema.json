@@ -67,6 +67,10 @@
                     "description": "ACME challenge used to obtain certificates - defaults to BF_PROXY_ACME_CHALLENGE.",
                     "enum": [ "http", "dns" ]
                 },
+                "dnsOverrideDomain": {
+                    "type": "string",
+                    "description": "Create the DNS challenge TXT record here instead of _acme-challenge.<host>, e.g. when _acme-challenge is a CNAME to a zone on deSEC - defaults to BF_PROXY_DNS_OVERRIDE_DOMAIN (\"\" to disable)."
+                },
                 "redirectToPrimary": {
                     "type": "boolean",
                     "description": "Redirect aliases to the primary domain - defaults to BF_PROXY_SSL_REDIRECT_TO_CANONICAL."

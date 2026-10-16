@@ -69,6 +69,8 @@ ENV \
     BF_PROXY_DNS_PROPAGATION_TIMEOUT= \
     # optional - space-separated DNS resolvers to use when checking propagation (e.g. "1.1.1.1 9.9.9.9")
     BF_PROXY_DNS_RESOLVERS= \
+    # optional - create DNS challenge TXT records here instead of _acme-challenge.<host> (can be set per domain in conf.json)
+    BF_PROXY_DNS_OVERRIDE_DOMAIN= \
     # set to 1 to regenerate and reload configuration automatically when conf.json, users.json or /sites change
     BF_PROXY_AUTO_RELOAD=0 \
     # keep retrying upstreams that cannot be reached for this long before showing the maintenance page (0s to disable)

@@ -37,7 +37,7 @@ export def generate [
         _comment: (if $domain.custom { $comment_custom } else { $comment_generated })
         route: (routes domain_route --before-routes $before_routes --extra-routes $extra_routes $domain $opts)
         errors: (routes error_route $domain $opts)
-        tls: (tls policy (conf hosts $domain) $domain.challenge $opts)
+        tls: (tls policy --dns-override $domain.dns_override (conf hosts $domain) $domain.challenge $opts)
     }
 }
 

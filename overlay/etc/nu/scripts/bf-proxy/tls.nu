@@ -6,8 +6,12 @@ export const lets_encrypt_staging = "https://acme-staging-v02.api.letsencrypt.or
 export const desec_token = "{env.BF_PROXY_DESEC_TOKEN}"
 
 # Build the DNS challenge configuration using the deSEC provider
-export def dns_challenge [opts: record]: nothing -> record {
+export def dns_challenge [
+    --override-domain: string = ""  # Create the TXT record here instead of _acme-challenge.<host> (see dnsOverrideDomain)
+    opts: record                    # Options record (see conf opts)
+]: nothing -> record {
     mut dns = {provider: {name: "desec", token: $desec_token}}
+    if $override_domain != "" { $dns = $dns | insert override_domain $override_domain }
     if $opts.dns_propagation_delay != "" { $dns = $dns | insert propagation_delay $opts.dns_propagation_delay }
     if $opts.dns_propagation_timeout != "" { $dns = $dns | insert propagation_timeout $opts.dns_propagation_timeout }
     if ($opts.dns_resolvers | is-not-empty) { $dns = $dns | insert resolvers $opts.dns_resolvers }
@@ -16,8 +20,9 @@ export def dns_challenge [opts: record]: nothing -> record {
 
 # Build the certificate issuer for the given challenge type
 export def issuer [
-    challenge: string   # 'http' or 'dns'
-    opts: record        # Options record (see conf opts)
+    --dns-override: string = "" # DNS challenge override domain (see dns_challenge)
+    challenge: string           # 'http' or 'dns'
+    opts: record                # Options record (see conf opts)
 ]: nothing -> record {
     # use Caddy's internal CA (for testing / local development)
     if $opts.internal_ca { return {module: "internal"} }
@@ -33,18 +38,19 @@ export def issuer [
         $base | insert challenges {
             http: {disabled: true}
             tls-alpn: {disabled: true}
-            dns: (dns_challenge $opts)
+            dns: (dns_challenge --override-domain $dns_override $opts)
         }
     } else { $base }
 }
 
 # Build a TLS automation policy for a list of subjects (host names)
 export def policy [
-    subjects: list<string>  # Host names covered by the policy - if empty, the policy applies to all other names
-    challenge: string       # 'http' or 'dns'
-    opts: record            # Options record (see conf opts)
+    --dns-override: string = "" # DNS challenge override domain (see dns_challenge)
+    subjects: list<string>      # Host names covered by the policy - if empty, the policy applies to all other names
+    challenge: string           # 'http' or 'dns'
+    opts: record                # Options record (see conf opts)
 ]: nothing -> record {
-    let p = {issuers: [(issuer $challenge $opts)]}
+    let p = {issuers: [(issuer --dns-override $dns_override $challenge $opts)]}
     if ($subjects | is-empty) { $p } else { {subjects: $subjects} | merge $p }
 }
 
