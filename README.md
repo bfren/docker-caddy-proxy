@@ -133,7 +133,7 @@ For every domain:
 * HTTP requests are redirected to HTTPS, and certificates are requested and renewed automatically.
 * Responses are compressed using zstd or gzip, depending on what the browser supports.  Images and other already-compressed formats, responses under 512 bytes, and responses the upstream has already compressed are left alone.
 * Secure headers are added (`Strict-Transport-Security`, `X-Frame-Options`, `X-Content-Type-Options`, `X-XSS-Protection`), and `X-Clacks-Overhead: GNU Terry Pratchett` - [because he was a legend](http://www.gnuterrypratchett.com).
-* `X-Real-IP` is sent to the upstream, as well as Caddy's standard `X-Forwarded-*` headers.  WebSockets work automatically.
+* The original `Host` header (including for `https` upstreams) and `X-Real-IP` are sent to the upstream, as well as Caddy's standard `X-Forwarded-*` headers.  WebSockets work automatically.
 * If the upstream cannot be reached (after retrying for `retry`, so a quick restart is not noticed), or returns 502, 503 or 504, an auto-refreshing maintenance page is shown.
 * Requests for unknown hosts are redirected to `BF_PROXY_DOMAIN`.
 

@@ -42,6 +42,13 @@ export def reverse_proxy__https_upstream_uses_tls_transport [] {
     assert equal {protocol: "http", tls: {}} $result.transport
 }
 
+export def reverse_proxy__passes_original_host_and_client_ip [] {
+    let result = reverse_proxy ["https://app"] "random" "/www/public"
+
+    assert equal ["{http.request.hostport}"] $result.headers.request.set.Host
+    assert equal ["{http.request.remote.host}"] ($result.headers.request.set | get "X-Real-IP")
+}
+
 export def reverse_proxy__tls_skip_verify_disables_certificate_checks [] {
     let result = reverse_proxy --tls-skip-verify ["https://app"] "random" "/www/public"
 

@@ -41,7 +41,9 @@ export def reverse_proxy [
     let handler = {
         handler: "reverse_proxy"
         upstreams: ($parsed | each {|p| {dial: $p.dial} })
-        headers: {request: {set: {"X-Real-IP": ["{http.request.remote.host}"]}}}
+        # always pass the original Host - Caddy changes it to the upstream address for https upstreams, which breaks
+        # apps that check it (e.g. UniFi OS rejects WebSockets when Host does not match Origin)
+        headers: {request: {set: {Host: ["{http.request.hostport}"], "X-Real-IP": ["{http.request.remote.host}"]}}}
         handle_response: [{
             match: {status_code: $maintenance_codes}
             routes: [{handle: (maintenance_handlers $public)}]
