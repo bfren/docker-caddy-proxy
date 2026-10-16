@@ -37,16 +37,25 @@ export def build__adds_tls_policy_per_domain_then_proxy_domain_then_default [] {
     assert equal null ($policies | last | get --optional subjects)
 }
 
-export def build__uses_default_dns_override_domain_for_proxy_domain_and_default_policies [] {
-    let opts = helpers opts | update challenge "dns" | update dns_override "b.acme.test"
-    let result = build_for [{primary: "a.test", upstream: "http://a", dnsOverrideDomain: "c.acme.test"}] $opts
-    let overrides = $result.apps.tls.automation.policies | each {|p| $p.issuers.0.challenges.dns.override_domain }
+export def build__delegates_dns_challenges_to_override_zone [] {
+    let opts = helpers opts | update challenge "dns" | update dns_override_zone "acme.test"
+    let input = [
+        {primary: "a.test", upstream: "http://a"}
+        {primary: "b.test", upstream: "http://b", dnsOverrideDomain: "other.acme.test"}
+    ]
+    let result = build_for $input $opts
+    let dns = $result.apps.tls.automation.policies | each {|p| $p.issuers.0.challenges.dns }
+    let has_override = $dns | each {|x| "override_domain" in ($x | columns) }
 
-    assert equal ["c.acme.test" "b.acme.test" "b.acme.test"] $overrides
+    assert equal "a.test.acme.test" ($dns | get 0 | get override_domain)
+    assert equal "other.acme.test" ($dns | get 1 | get override_domain)
+    assert equal "proxy.test.acme.test" ($dns | get 2 | get override_domain)
+    # the default policy has no host name to delegate
+    assert equal [true true true false] $has_override
 }
 
-export def build__ignores_default_dns_override_domain_with_http_challenge [] {
-    let opts = helpers opts | update dns_override "b.acme.test"
+export def build__ignores_dns_override_zone_with_http_challenge [] {
+    let opts = helpers opts | update dns_override_zone "acme.test"
     let result = build_for [] $opts
     let has_challenges = $result.apps.tls.automation.policies | each {|p| "challenges" in ($p.issuers.0 | columns) }
 

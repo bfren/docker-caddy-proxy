@@ -53,7 +53,7 @@ Files and directories in all three volumes are owned by `www` (UID / GID 1000), 
 | `BF_PROXY_DNS_PROPAGATION_DELAY`       | Duration, e.g. 60s    | Time to wait after creating the DNS record before checking for propagation.                                    | *None*                |
 | `BF_PROXY_DNS_PROPAGATION_TIMEOUT`     | Duration, e.g. 5m     | How long to wait for DNS propagation.                                                                          | *None*                |
 | `BF_PROXY_DNS_RESOLVERS`               | Space-separated IPs   | DNS resolvers used to check propagation, e.g. `1.1.1.1 9.9.9.9`.                                               | *None*                |
-| `BF_PROXY_DNS_OVERRIDE_DOMAIN`         | Host name             | Default for `dnsOverrideDomain` - see [DNS Challenge](#dns-challenge).                                         | *None*                |
+| `BF_PROXY_DNS_OVERRIDE_ZONE`           | Domain name           | Delegate DNS challenges to `<primary>.<zone>` - see [DNS Challenge](#dns-challenge).                           | *None*                |
 | `BF_PROXY_SSL_REDIRECT_TO_CANONICAL`   | 0 or 1                | Default for `redirectToPrimary` - if 1, aliases are redirected to the primary domain.                          | 0                     |
 | `BF_PROXY_AUTO_RELOAD`                 | 0 or 1                | If 1, configuration is regenerated and reloaded when `conf.json`, `users.json` or `/sites` change.             | 0                     |
 | `BF_PROXY_UPSTREAM_RETRY`              | Duration, e.g. 5s     | How long to keep retrying an upstream that cannot be reached (e.g. while it restarts) - `0s` to disable.       | 5s                    |
@@ -94,7 +94,7 @@ Domains are defined in `/ssl/conf.json` - see `proxy-conf-sample.json` for an ex
 | `retry`             | How long to keep retrying an unreachable upstream before showing the maintenance page, e.g. `10s` (`0s` to disable) - defaults to `BF_PROXY_UPSTREAM_RETRY`. |
 | `lb`                | Load balancing policy for multiple upstreams: `random` (default), `round_robin`, `least_conn`, `first`, `ip_hash`, `uri_hash`, `client_ip_hash`.             |
 | `challenge`         | `http` or `dns` - defaults to `BF_PROXY_ACME_CHALLENGE`.                                                                                                     |
-| `dnsOverrideDomain` | Create the DNS challenge record here instead of `_acme-challenge.<host>` - defaults to `BF_PROXY_DNS_OVERRIDE_DOMAIN` (`""` to disable).                     |
+| `dnsOverrideDomain` | Create the DNS challenge record here instead of `_acme-challenge.<host>` - defaults to `<primary>.<BF_PROXY_DNS_OVERRIDE_ZONE>` (`""` to disable).           |
 | `redirectToPrimary` | Redirect aliases to the primary domain - defaults to `BF_PROXY_SSL_REDIRECT_TO_CANONICAL`.                                                                   |
 | `auth`              | Enable HTTP basic auth: `true` for all users, or a list of user names - see `proxy-adduser`.                                                                 |
 | `headers`           | Response headers to add or override, e.g. `{ "X-Frame-Options": "DENY" }`.                                                                                   |
@@ -166,7 +166,12 @@ The DNS challenge allows certificates to be issued for wildcard domains, and for
 2. Set `BF_PROXY_DESEC_TOKEN` to the token, and either set `BF_PROXY_ACME_CHALLENGE=dns` or `"challenge": "dns"` for each domain.
 3. If certificate requests fail because the record has not propagated, set `BF_PROXY_DNS_PROPAGATION_DELAY` (e.g. `60s`) and / or `BF_PROXY_DNS_RESOLVERS` (e.g. `1.1.1.1`).
 
-If a domain is hosted with another DNS provider, delegate the challenge to a zone on deSEC: add a CNAME record from `_acme-challenge.<host>` to a name in that zone (e.g. `acme.example.net`), then set `"dnsOverrideDomain": "acme.example.net"` for the domain, or `BF_PROXY_DNS_OVERRIDE_DOMAIN` for every domain using the DNS challenge.  Caddy does not follow the CNAME itself, so the override is required.  It applies to the primary domain and all its aliases, so their CNAME records must point to the same name.
+If a domain is hosted with another DNS provider, delegate the challenge to a zone on deSEC (e.g. `acme.example.net`) using a CNAME record.  Caddy does not follow the CNAME itself, so it must be told where to create the record:
+
+* Set `BF_PROXY_DNS_OVERRIDE_ZONE=acme.example.net` and each domain using the DNS challenge delegates to `<primary>.acme.example.net`, e.g. add a CNAME record from `_acme-challenge.send.example.com` to `send.example.com.acme.example.net`.  The proxy domain delegates in the same way.
+* Set `"dnsOverrideDomain"` on a domain in `conf.json` to use a different name, or `""` if the domain is hosted on deSEC and does not need delegating.
+
+Using a separate name for each domain stops certificate requests for different domains overwriting each other's records.  A domain's aliases use the same name as its primary, so their CNAME records must point to it too.
 
 The token is not written to the generated configuration files - Caddy reads it from the environment at runtime.
 

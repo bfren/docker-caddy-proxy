@@ -140,19 +140,19 @@ export def validate__dns_override_domain_requires_dns_challenge [] {
     assert equal ["a.test: dnsOverrideDomain requires the dns challenge."] $result
 }
 
-export def normalise__uses_default_dns_override_domain_with_dns_challenge [] {
-    let opts = helpers opts | update dns_override "b.acme.test"
+export def normalise__delegates_dns_challenge_to_override_zone [] {
+    let opts = helpers opts | update dns_override_zone "acme.test"
 
-    let dns = normalise {primary: "a.test", upstream: "http://a", challenge: "dns"} $opts
+    let dns = normalise {primary: " Send.A.Test ", upstream: "http://a", challenge: "dns"} $opts
     let http = normalise {primary: "a.test", upstream: "http://a"} $opts
 
-    assert equal "b.acme.test" $dns.dns_override
+    assert equal "send.a.test.acme.test" $dns.dns_override
     assert equal "" $http.dns_override
     assert equal [] (validate [$http] $opts)
 }
 
-export def normalise__domain_dns_override_domain_replaces_default [] {
-    let opts = helpers opts | update challenge "dns" | update dns_override "b.acme.test"
+export def normalise__domain_dns_override_domain_replaces_override_zone [] {
+    let opts = helpers opts | update challenge "dns" | update dns_override_zone "acme.test"
 
     let other = normalise {primary: "a.test", upstream: "http://a", dnsOverrideDomain: "c.acme.test"} $opts
     let disabled = normalise {primary: "a.test", upstream: "http://a", dnsOverrideDomain: ""} $opts
@@ -282,10 +282,18 @@ export def check_env__does_not_require_email_with_internal_ca [] {
     assert equal [] $result
 }
 
-export def check_env__checks_default_dns_override_domain [] {
-    let result = check_env [] (helpers opts | update dns_override "*.acme.test")
+export def check_env__checks_dns_override_zone [] {
+    let result = check_env [] (helpers opts | update dns_override_zone "*.acme.test")
 
-    assert ($result | any {|e| $e | str contains "BF_PROXY_DNS_OVERRIDE_DOMAIN" })
+    assert ($result | any {|e| $e | str contains "BF_PROXY_DNS_OVERRIDE_ZONE" })
+}
+
+export def delegated_name__adds_host_to_override_zone [] {
+    let opts = helpers opts | update dns_override_zone "acme.test"
+
+    assert equal "send.a.test.acme.test" (delegated_name "send.a.test" $opts)
+    assert equal "" (delegated_name "" $opts)
+    assert equal "" (delegated_name "send.a.test" (helpers opts))
 }
 
 export def check_env__requires_desec_token_for_dns_challenge [] {

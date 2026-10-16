@@ -12,7 +12,7 @@ export def opts []: nothing -> record {
         dns_propagation_delay: ""
         dns_propagation_timeout: ""
         dns_resolvers: []
-        dns_override: ""
+        dns_override_zone: ""
         harden: false
         redirect_to_primary: false
         block_ai_bots: true

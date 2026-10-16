@@ -66,10 +66,11 @@ export def build [
         | where $it != null
 
     # TLS automation: one policy per domain, then the proxy domain, then a default policy for any other names
+    # (the default policy has no host name to delegate DNS challenges for, so it never uses BF_PROXY_DNS_OVERRIDE_ZONE)
     let policies = [
         ...($configs | each {|c| $c | get --optional tls } | where $it != null)
-        (tls policy --dns-override $opts.dns_override [$opts.proxy_domain] $opts.challenge $opts)
-        (tls policy --dns-override $opts.dns_override [] $opts.challenge $opts)
+        (tls policy --dns-override (conf delegated_name $opts.proxy_domain $opts) [$opts.proxy_domain] $opts.challenge $opts)
+        (tls policy [] $opts.challenge $opts)
     ]
 
     # the HTTPS server - Caddy automatically adds an HTTP server to redirect HTTP to HTTPS and solve HTTP challenges
