@@ -5,7 +5,6 @@ export const lets_encrypt_staging = "https://acme-staging-v02.api.letsencrypt.or
 # DNS provider modules - tokens are placeholders replaced by Caddy at runtime, so they are never written to the
 # configuration file
 export const dns_providers = {
-    desec: {name: "desec", token: "{env.BF_PROXY_DESEC_TOKEN}"}
     hetzner: {name: "hetzner", api_token: "{env.BF_PROXY_HETZNER_TOKEN}"}
 }
 

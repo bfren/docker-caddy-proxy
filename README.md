@@ -4,7 +4,7 @@
 
 [Docker Repository](https://hub.docker.com/r/bfren/caddy-proxy) - [bfren ecosystem](https://github.com/bfren/docker)
 
-Reverse proxy built on [Caddy](https://caddyserver.com), configured using a simple JSON file.  Caddy requests and renews SSL certificates from Let's Encrypt automatically, using either the HTTP challenge or the DNS challenge (via [deSEC](https://desec.io) or [Hetzner](https://www.hetzner.com/dns)), which also supports wildcard certificates.
+Reverse proxy built on [Caddy](https://caddyserver.com), configured using a simple JSON file.  Caddy requests and renews SSL certificates from Let's Encrypt automatically, using either the HTTP challenge or the DNS challenge (via [Hetzner](https://www.hetzner.com/dns)), which also supports wildcard certificates.
 
 This is the successor to [bfren/nginx-proxy](https://github.com/bfren/docker-nginx-proxy) - see [Migrating from nginx-proxy](#migrating-from-nginx-proxy).
 
@@ -49,10 +49,9 @@ Files and directories in all three volumes are owned by `www` (UID / GID 1000), 
 | `BF_PROXY_LETS_ENCRYPT_EMAIL`          | Email address         | Used by Let's Encrypt for account registration and notification emails.                                        | *None* - **required** |
 | `BF_PROXY_LETS_ENCRYPT_LIVE`           | 0 or 1                | Only set to 1 (to request live certificates) when your config is correct - Let's Encrypt rate limits requests. | 0                     |
 | `BF_PROXY_ACME_CHALLENGE`              | http or dns           | Default challenge type - can be overridden per domain in `conf.json`.                                          | http                  |
-| `BF_PROXY_DNS_PROVIDER`                | desec or hetzner      | DNS provider used for the DNS challenge - see [DNS Challenge](#dns-challenge).                                 | desec                 |
-| `BF_PROXY_DESEC_TOKEN`                 | deSEC API token       | Required to use the DNS challenge with deSEC.                                                                  | *None*                |
-| `BF_PROXY_HETZNER_TOKEN`               | Hetzner API token     | Required to use the DNS challenge with Hetzner.                                                                | *None*                |
-| `BF_PROXY_DNS_TTL`                     | Duration, e.g. 60s    | TTL of DNS challenge records (the deSEC module always uses at least 3600s).                                    | *Provider default*    |
+| `BF_PROXY_DNS_PROVIDER`                | hetzner               | DNS provider used for the DNS challenge - see [DNS Challenge](#dns-challenge).                                 | hetzner               |
+| `BF_PROXY_HETZNER_TOKEN`               | Hetzner API token     | Required to use the DNS challenge - see [DNS Challenge](#dns-challenge).                                       | *None*                |
+| `BF_PROXY_DNS_TTL`                     | Duration, e.g. 60s    | TTL of DNS challenge records.                                                                                  | *Provider default*    |
 | `BF_PROXY_DNS_PROPAGATION_DELAY`       | Duration, e.g. 60s    | Time to wait after creating the DNS challenge record before it is checked (`0s` to disable).                   | 60s                   |
 | `BF_PROXY_DNS_PROPAGATION_TIMEOUT`     | Duration, e.g. 5m     | How long to wait for DNS propagation.                                                                          | *None*                |
 | `BF_PROXY_DNS_RESOLVERS`               | Space-separated IPs   | DNS resolvers used to check propagation, e.g. `1.1.1.1 9.9.9.9`.                                               | *None*                |
@@ -162,16 +161,16 @@ If the file does not exist it is generated from the standard base.  What happens
 
 ## DNS Challenge
 
-The DNS challenge allows certificates to be issued for wildcard domains, and for servers that are not reachable from the internet (e.g. only accessible over a VPN).  Caddy is built with the [deSEC](https://github.com/caddy-dns/desec) and [Hetzner](https://github.com/caddy-dns/hetzner) DNS provider modules.
+The DNS challenge allows certificates to be issued for wildcard domains, and for servers that are not reachable from the internet (e.g. only accessible over a VPN).  Caddy is built with the [Hetzner](https://github.com/caddy-dns/hetzner) DNS provider module.
 
-1. Create an API token that can manage the relevant zones - in your deSEC account, or in a Hetzner Console project (the Hetzner module uses the Cloud DNS API).
-2. Set `BF_PROXY_DNS_PROVIDER` to `desec` or `hetzner`, and `BF_PROXY_DESEC_TOKEN` or `BF_PROXY_HETZNER_TOKEN` to the token.
+1. Create an API token with read / write permission in the Hetzner Console project that holds the relevant zones (the Hetzner module uses the Cloud DNS API).
+2. Set `BF_PROXY_HETZNER_TOKEN` to the token.
 3. Either set `BF_PROXY_ACME_CHALLENGE=dns`, or `"challenge": "dns"` for each domain.
 4. If certificate requests fail with NXDOMAIN because the record has not reached all of the provider's nameservers, increase `BF_PROXY_DNS_PROPAGATION_DELAY` (e.g. `120s`) and / or set `BF_PROXY_DNS_RESOLVERS` (e.g. `1.1.1.1`).
 
 By default Caddy waits 60 seconds after creating each DNS challenge record before asking Let's Encrypt to check it.  Without the wait, Let's Encrypt can query a nameserver that does not have the record yet, and resolvers then cache the missing record (for the time set by the zone's SOA record), so retries fail too.  Certificates are requested in parallel, so the wait applies once rather than once per domain, and only when a certificate is issued or renewed.
 
-Resolvers also cache challenge records for their TTL, so after a failed attempt they can keep returning the old value and retries fail until it expires.  The deSEC module always uses a TTL of at least 3600s, so a failure can block retries for up to an hour - with deSEC, a delay longer than the zone's negative cache time (e.g. `330s` for 300s) has been needed.  The Hetzner module accepts TTLs down to 60s, so set `BF_PROXY_DNS_TTL=60s` to keep stale values short-lived.
+Resolvers also cache challenge records for their TTL, so after a failed attempt they can keep returning the old value and retries fail until it expires.  Set `BF_PROXY_DNS_TTL=60s` (the lowest TTL Hetzner accepts) to keep stale values short-lived.
 
 If a domain is hosted with another DNS provider, delegate the challenge to a zone hosted by the DNS provider (e.g. `acme.example.net`) using a CNAME record.  Caddy does not follow the CNAME itself, so it must be told where to create the record:
 

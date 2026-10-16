@@ -8,7 +8,7 @@ export const schema = "https://raw.githubusercontent.com/bfren/docker-caddy-prox
 export const challenges = ["http" "dns"]
 
 # Valid DNS providers for the dns challenge - each uses BF_PROXY_<PROVIDER>_TOKEN
-export const dns_providers = ["desec" "hetzner"]
+export const dns_providers = ["hetzner"]
 
 # Valid retry durations (empty disables retries)
 export const duration_pattern = '^(\d+(ms|s|m))?$'
@@ -28,7 +28,7 @@ export def opts []: nothing -> record {
         internal_ca: (bf env check PROXY_USE_INTERNAL_CA)
         challenge: (bf env PROXY_ACME_CHALLENGE "http")
         retry: (bf env --safe PROXY_UPSTREAM_RETRY)
-        dns_provider: (bf env PROXY_DNS_PROVIDER "desec" | str trim | str lowercase)
+        dns_provider: (bf env PROXY_DNS_PROVIDER "hetzner" | str trim | str lowercase)
         dns_ttl: (bf env --safe PROXY_DNS_TTL)
         dns_propagation_delay: (bf env --safe PROXY_DNS_PROPAGATION_DELAY)
         dns_propagation_timeout: (bf env --safe PROXY_DNS_PROPAGATION_TIMEOUT)
@@ -246,7 +246,7 @@ export def validate_domain [
             (($wildcards | is-not-empty) and $d.challenge != "dns")
             $"wildcard aliases \(($wildcards | str join ', ')\) require the dns challenge"
         ]
-        # the TXT record can be created in another zone (e.g. when _acme-challenge is a CNAME to a zone hosted on deSEC)
+        # the TXT record can be created in another zone (e.g. when _acme-challenge is a CNAME to a zone hosted by the DNS provider)
         [
             ($d.dns_override != "" and $d.challenge != "dns")
             "dnsOverrideDomain requires the dns challenge"

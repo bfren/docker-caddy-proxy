@@ -28,10 +28,10 @@ export def issuer__uses_internal_ca_when_enabled [] {
     assert equal {module: "internal"} $result
 }
 
-export def issuer__dns_uses_desec_and_disables_other_challenges [] {
+export def issuer__dns_uses_hetzner_and_disables_other_challenges [] {
     let result = issuer "dns" (helpers opts)
 
-    assert equal {name: "desec", token: "{env.BF_PROXY_DESEC_TOKEN}"} $result.challenges.dns.provider
+    assert equal {name: "hetzner", api_token: "{env.BF_PROXY_HETZNER_TOKEN}"} $result.challenges.dns.provider
     assert equal true $result.challenges.http.disabled
     assert equal true ($result.challenges | get tls-alpn | get disabled)
 }
@@ -57,12 +57,6 @@ export def dns_challenge__omits_optional_values_when_not_set [] {
     let result = dns_challenge (helpers opts | update dns_propagation_delay "")
 
     assert equal ["provider"] ($result | columns)
-}
-
-export def dns_challenge__uses_hetzner_provider [] {
-    let result = dns_challenge (helpers opts | update dns_provider "hetzner")
-
-    assert equal {name: "hetzner", api_token: "{env.BF_PROXY_HETZNER_TOKEN}"} $result.provider
 }
 
 export def dns_challenge__includes_ttl_when_set [] {

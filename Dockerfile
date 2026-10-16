@@ -1,5 +1,5 @@
 #======================================================================================================================
-# STAGE 0: build Caddy with the deSEC and Hetzner DNS provider modules, and certinfo (used by proxy-certs)
+# STAGE 0: build Caddy with the Hetzner DNS provider module, and certinfo (used by proxy-certs)
 #======================================================================================================================
 
 ARG CADDY_BUILDER=caddy:2.11-builder-alpine
@@ -11,14 +11,12 @@ ARG TARGETARCH
 ARG TARGETVARIANT
 
 ARG CADDY_VERSION=2.11.7
-ARG CADDY_DESEC_VERSION=1.1.0
 ARG CADDY_HETZNER_VERSION=2.0.1
 
 RUN \
     # cross-compile for the target platform (GOARM is only used for linux/arm/v7)
     GOOS=${TARGETOS} GOARCH=${TARGETARCH} GOARM=${TARGETVARIANT#v} \
     xcaddy build v${CADDY_VERSION} \
-        --with github.com/caddy-dns/desec@v${CADDY_DESEC_VERSION} \
         --with github.com/caddy-dns/hetzner/v2@v${CADDY_HETZNER_VERSION} \
         --output /caddy
 
@@ -66,9 +64,9 @@ ENV \
     BF_PROXY_USE_INTERNAL_CA=0 \
     # default ACME challenge for domains: 'http' or 'dns' (can be set per domain in conf.json)
     BF_PROXY_ACME_CHALLENGE=http \
-    # DNS provider used for the dns challenge: 'desec' or 'hetzner' (with BF_PROXY_DESEC_TOKEN or BF_PROXY_HETZNER_TOKEN)
-    BF_PROXY_DNS_PROVIDER=desec \
-    # optional - TTL of DNS challenge records (e.g. 60s) - the deSEC module always uses at least 3600s
+    # DNS provider used for the dns challenge: 'hetzner' (with BF_PROXY_HETZNER_TOKEN)
+    BF_PROXY_DNS_PROVIDER=hetzner \
+    # optional - TTL of DNS challenge records (e.g. 60s)
     BF_PROXY_DNS_TTL= \
     # time to wait after creating a DNS challenge record before it is checked, so it can reach all of the DNS
     # provider's nameservers (0s to disable) - and optionally how long to wait for it (e.g. 5m)

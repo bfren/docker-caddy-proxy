@@ -296,23 +296,12 @@ export def delegated_name__adds_host_to_override_zone [] {
     assert equal "" (delegated_name "send.a.test" (helpers opts))
 }
 
-export def check_env__requires_desec_token_for_dns_challenge [] {
+export def check_env__requires_token_for_dns_challenge [] {
     let opts = helpers opts
     let d = normalise {primary: "a.test", upstream: "http://a", challenge: "dns"} $opts
 
-    let without = with-env {BF_PROXY_DESEC_TOKEN: ""} { check_env [$d] $opts }
-    let with = with-env {BF_PROXY_DESEC_TOKEN: "token"} { check_env [$d] $opts }
-
-    assert ($without | any {|x| $x | str contains "BF_PROXY_DESEC_TOKEN" })
-    assert equal [] $with
-}
-
-export def check_env__requires_token_for_dns_provider [] {
-    let opts = helpers opts | update dns_provider "hetzner"
-    let d = normalise {primary: "a.test", upstream: "http://a", challenge: "dns"} $opts
-
-    let without = with-env {BF_PROXY_HETZNER_TOKEN: "", BF_PROXY_DESEC_TOKEN: "token"} { check_env [$d] $opts }
-    let with = with-env {BF_PROXY_HETZNER_TOKEN: "token", BF_PROXY_DESEC_TOKEN: ""} { check_env [$d] $opts }
+    let without = with-env {BF_PROXY_HETZNER_TOKEN: ""} { check_env [$d] $opts }
+    let with = with-env {BF_PROXY_HETZNER_TOKEN: "token"} { check_env [$d] $opts }
 
     assert ($without | any {|x| $x | str contains "BF_PROXY_HETZNER_TOKEN" })
     assert equal [] $with
