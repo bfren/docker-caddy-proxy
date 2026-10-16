@@ -327,7 +327,7 @@ export def check_env [
     opts: record            # Options record (see opts)
 ]: nothing -> list<string> {
     let uses_dns = ($opts.challenge == "dns") or ($domains | any {|d| $d.challenge == "dns" })
-    let token_var = $"PROXY_($opts.dns_provider | str upcase)_TOKEN"
+    let token_var = $"PROXY_($opts.dns_provider | str uppercase)_TOKEN"
     let no_token = (bf env --safe $token_var) == ""
 
     failures [
