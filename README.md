@@ -139,7 +139,6 @@ For every domain:
 
 `BF_PROXY_DOMAIN` serves the files in `/www/public`, with static files (images, CSS, JavaScript, fonts etc.) cached for a year, and `/favicon.ico` returning 204 (No Content) unless you add one.
 
-
 ### AI Crawlers
 
 When `BF_PROXY_BLOCK_AI_BOTS=1` (the default), requests from crawlers that collect AI training data receive 403 Forbidden.  The list comes from [ai.robots.txt](https://github.com/ai-robots-txt/ai.robots.txt): its `robots.json` is downloaded when the image is built (the release is set by the `AI_ROBOTS_VERSION` build argument), and only crawlers whose `function` is training data collection are kept - AI search crawlers, assistants and user-triggered agents (e.g. `OAI-SearchBot`, `ChatGPT-User`, `PerplexityBot`) are not blocked.  The list is saved to `/usr/share/caddy-proxy/ai-bots.txt`.
