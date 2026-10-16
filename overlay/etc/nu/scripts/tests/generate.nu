@@ -37,6 +37,22 @@ export def build__adds_tls_policy_per_domain_then_proxy_domain_then_default [] {
     assert equal null ($policies | last | get --optional subjects)
 }
 
+export def build__uses_default_dns_override_domain_for_proxy_domain_and_default_policies [] {
+    let opts = helpers opts | update challenge "dns" | update dns_override "b.acme.test"
+    let result = build_for [{primary: "a.test", upstream: "http://a", dnsOverrideDomain: "c.acme.test"}] $opts
+    let overrides = $result.apps.tls.automation.policies | each {|p| $p.issuers.0.challenges.dns.override_domain }
+
+    assert equal ["c.acme.test" "b.acme.test" "b.acme.test"] $overrides
+}
+
+export def build__ignores_default_dns_override_domain_with_http_challenge [] {
+    let opts = helpers opts | update dns_override "b.acme.test"
+    let result = build_for [] $opts
+    let challenges = $result.apps.tls.automation.policies | each {|p| $p.issuers.0 | get --optional challenges }
+
+    assert equal [null null] $challenges
+}
+
 export def build__uses_storage_from_opts [] {
     let result = build_for [] (helpers opts)
 
