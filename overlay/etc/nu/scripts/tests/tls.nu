@@ -54,20 +54,26 @@ export def issuer__http_ignores_override_domain [] {
 #======================================================================================================================
 
 export def dns_challenge__omits_optional_values_when_not_set [] {
-    let result = dns_challenge (helpers opts)
+    let result = dns_challenge (helpers opts | update dns_propagation_delay "")
 
     assert equal ["provider"] ($result | columns)
 }
 
+export def dns_challenge__uses_default_propagation_delay [] {
+    let result = dns_challenge (helpers opts)
+
+    assert equal "60s" $result.propagation_delay
+}
+
 export def dns_challenge__includes_optional_values_when_set [] {
     let opts = helpers opts
-        | update dns_propagation_delay "60s"
+        | update dns_propagation_delay "90s"
         | update dns_propagation_timeout "5m"
         | update dns_resolvers ["1.1.1.1" "9.9.9.9"]
 
     let result = dns_challenge $opts
 
-    assert equal "60s" $result.propagation_delay
+    assert equal "90s" $result.propagation_delay
     assert equal "5m" $result.propagation_timeout
     assert equal ["1.1.1.1" "9.9.9.9"] $result.resolvers
 }

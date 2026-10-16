@@ -64,8 +64,9 @@ ENV \
     BF_PROXY_USE_INTERNAL_CA=0 \
     # default ACME challenge for domains: 'http' or 'dns' (can be set per domain in conf.json)
     BF_PROXY_ACME_CHALLENGE=http \
-    # optional - time to wait before checking DNS propagation (e.g. 60s), and how long to wait for it (e.g. 5m)
-    BF_PROXY_DNS_PROPAGATION_DELAY= \
+    # time to wait after creating a DNS challenge record before it is checked, so it can reach all of deSEC's
+    # nameservers (0s to disable) - and optionally how long to wait for it (e.g. 5m)
+    BF_PROXY_DNS_PROPAGATION_DELAY=60s \
     BF_PROXY_DNS_PROPAGATION_TIMEOUT= \
     # optional - space-separated DNS resolvers to use when checking propagation (e.g. "1.1.1.1 9.9.9.9")
     BF_PROXY_DNS_RESOLVERS= \
