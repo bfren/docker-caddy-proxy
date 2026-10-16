@@ -197,6 +197,7 @@ If the new configuration is not valid (e.g. a JSON syntax error or a missing ups
 | `proxy-reload`     | *None*                     | Validates the current configuration and reloads Caddy.                                                          |
 | `proxy-validate`   | *None*                     | Validates `conf.json` and the current Caddy configuration.                                                      |
 | `proxy-certs`      | *None*                     | Lists certificates with their issuer, expiry date and days left (flagged when 14 days or fewer remain).         |
+| `proxy-renew`      | -d: only domain            | Deletes certificates (all, or a domain's primary and aliases) and restarts Caddy so it requests new ones.       |
 | `proxy-cleanup`    | -l: live mode              | Removes configuration and certificates for domains not defined in `conf.json` (dry run unless `-l` is set).     |
 | `proxy-adduser`    | 0: username, 1: password   | Adds (or updates) a user for HTTP basic auth, then regenerates configuration.                                   |
 | `proxy-deluser`    | 0: username                | Removes a user, then regenerates configuration.                                                                 |
