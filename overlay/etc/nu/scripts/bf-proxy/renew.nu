@@ -4,13 +4,16 @@ use conf.nu
 
 # Delete certificates from Caddy storage and restart Caddy, so it requests new ones
 export def main [
+    --all (-a)                  # Renew all certificates
     --domain (-d): string = ""  # Only renew certificates for this domain (its primary and aliases)
 ]: nothing -> nothing {
+    if not (check_args $all $domain) { bf write error "Either --all or --domain must be set (but not both)." renew }
+
     let config = conf read
     let opts = $config.opts
 
-    # with no domain, every certificate is renewed
-    let hosts = if $domain == "" { [] } else if $domain == $opts.proxy_domain { [$domain] } else {
+    # an empty list of hosts matches every certificate
+    let hosts = if $all { [] } else if $domain == $opts.proxy_domain { [$domain] } else {
         let d = $config.domains | where primary == $domain
         if ($d | is-empty) { bf write error $"Domain ($domain) is not defined in conf.json." renew }
         conf hosts ($d | first)
@@ -35,6 +38,14 @@ export def main [
     } else {
         bf write ok "Caddy is not running - new certificates will be requested when it starts." renew
     }
+}
+
+# Returns true if exactly one of --all and --domain is set, so all certificates are only renewed when asked for
+export def check_args [
+    all: bool       # Value of --all
+    domain: string  # Value of --domain
+]: nothing -> bool {
+    $all != ($domain != "")
 }
 
 # Return certificate directories in Caddy storage for the given host names (all certificates if empty) -

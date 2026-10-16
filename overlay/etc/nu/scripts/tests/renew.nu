@@ -3,6 +3,27 @@ use ../bf-proxy/renew.nu *
 
 
 #======================================================================================================================
+# check_args
+#======================================================================================================================
+
+export def check_args__requires_all_or_domain [] {
+    assert equal false (check_args false "")
+}
+
+export def check_args__accepts_all [] {
+    assert equal true (check_args true "")
+}
+
+export def check_args__accepts_domain [] {
+    assert equal true (check_args false "a.test")
+}
+
+export def check_args__rejects_all_and_domain [] {
+    assert equal false (check_args true "a.test")
+}
+
+
+#======================================================================================================================
 # cert_dirs
 #======================================================================================================================
 
