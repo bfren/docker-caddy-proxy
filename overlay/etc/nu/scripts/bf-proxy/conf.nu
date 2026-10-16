@@ -7,6 +7,9 @@ export const schema = "https://raw.githubusercontent.com/bfren/docker-caddy-prox
 # Valid ACME challenge types
 export const challenges = ["http" "dns"]
 
+# Valid DNS providers for the dns challenge - each uses BF_PROXY_<PROVIDER>_TOKEN
+export const dns_providers = ["desec" "hetzner"]
+
 # Valid retry durations (empty disables retries)
 export const duration_pattern = '^(\d+(ms|s|m))?$'
 
@@ -25,6 +28,8 @@ export def opts []: nothing -> record {
         internal_ca: (bf env check PROXY_USE_INTERNAL_CA)
         challenge: (bf env PROXY_ACME_CHALLENGE "http")
         retry: (bf env --safe PROXY_UPSTREAM_RETRY)
+        dns_provider: (bf env PROXY_DNS_PROVIDER "desec" | str trim | str lowercase)
+        dns_ttl: (bf env --safe PROXY_DNS_TTL)
         dns_propagation_delay: (bf env --safe PROXY_DNS_PROPAGATION_DELAY)
         dns_propagation_timeout: (bf env --safe PROXY_DNS_PROPAGATION_TIMEOUT)
         dns_resolvers: (bf env --safe PROXY_DNS_RESOLVERS | split row " " | where $it != "")
@@ -322,13 +327,16 @@ export def check_env [
     opts: record            # Options record (see opts)
 ]: nothing -> list<string> {
     let uses_dns = ($opts.challenge == "dns") or ($domains | any {|d| $d.challenge == "dns" })
-    let no_token = (bf env --safe PROXY_DESEC_TOKEN) == ""
+    let token_var = $"PROXY_($opts.dns_provider | str upcase)_TOKEN"
+    let no_token = (bf env --safe $token_var) == ""
 
     failures [
         [($opts.proxy_domain == "")                             "BF_PROXY_DOMAIN must be set"]
         [($opts.email == "" and (not $opts.internal_ca))        "BF_PROXY_LETS_ENCRYPT_EMAIL must be set"]
         [($opts.challenge not-in $challenges)                   $"BF_PROXY_ACME_CHALLENGE must be one of ($challenges | str join ', ')"]
-        [($uses_dns and $no_token and (not $opts.internal_ca))  "BF_PROXY_DESEC_TOKEN must be set to use the dns challenge"]
+        [($opts.dns_provider not-in $dns_providers)             $"BF_PROXY_DNS_PROVIDER must be one of ($dns_providers | str join ', ')"]
+        [($uses_dns and $no_token and (not $opts.internal_ca))  $"BF_($token_var) must be set to use the dns challenge with ($opts.dns_provider)"]
+        [(not ($opts.dns_ttl =~ $duration_pattern))             $"BF_PROXY_DNS_TTL '($opts.dns_ttl)' must be a duration, e.g. 60s"]
         [($opts.dns_override_zone != "" and not ($opts.dns_override_zone =~ $host_pattern))  $"BF_PROXY_DNS_OVERRIDE_ZONE '($opts.dns_override_zone)' must be a domain name, e.g. acme.example.net"]
     ]
 }

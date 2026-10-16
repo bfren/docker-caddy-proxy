@@ -307,6 +307,31 @@ export def check_env__requires_desec_token_for_dns_challenge [] {
     assert equal [] $with
 }
 
+export def check_env__requires_token_for_dns_provider [] {
+    let opts = helpers opts | update dns_provider "hetzner"
+    let d = normalise {primary: "a.test", upstream: "http://a", challenge: "dns"} $opts
+
+    let without = with-env {BF_PROXY_HETZNER_TOKEN: "", BF_PROXY_DESEC_TOKEN: "token"} { check_env [$d] $opts }
+    let with = with-env {BF_PROXY_HETZNER_TOKEN: "token", BF_PROXY_DESEC_TOKEN: ""} { check_env [$d] $opts }
+
+    assert ($without | any {|x| $x | str contains "BF_PROXY_HETZNER_TOKEN" })
+    assert equal [] $with
+}
+
+export def check_env__rejects_unknown_dns_provider [] {
+    let result = check_env [] (helpers opts | update dns_provider "route53")
+
+    assert ($result | any {|x| $x | str contains "BF_PROXY_DNS_PROVIDER" })
+}
+
+export def check_env__checks_dns_ttl [] {
+    let valid = check_env [] (helpers opts | update dns_ttl "60s")
+    let invalid = check_env [] (helpers opts | update dns_ttl "60")
+
+    assert equal [] $valid
+    assert ($invalid | any {|x| $x | str contains "BF_PROXY_DNS_TTL" })
+}
+
 
 #======================================================================================================================
 # load

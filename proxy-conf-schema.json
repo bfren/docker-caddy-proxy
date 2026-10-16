@@ -69,7 +69,7 @@
                 },
                 "dnsOverrideDomain": {
                     "type": "string",
-                    "description": "Create the DNS challenge TXT record here instead of _acme-challenge.<host>, e.g. when _acme-challenge is a CNAME to a zone on deSEC - defaults to <primary>.<BF_PROXY_DNS_OVERRIDE_ZONE> (\"\" to disable)."
+                    "description": "Create the DNS challenge TXT record here instead of _acme-challenge.<host>, e.g. when _acme-challenge is a CNAME to a zone hosted by the DNS provider - defaults to <primary>.<BF_PROXY_DNS_OVERRIDE_ZONE> (\"\" to disable)."
                 },
                 "redirectToPrimary": {
                     "type": "boolean",

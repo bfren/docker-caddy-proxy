@@ -2,15 +2,20 @@
 export const lets_encrypt_live = "https://acme-v02.api.letsencrypt.org/directory"
 export const lets_encrypt_staging = "https://acme-staging-v02.api.letsencrypt.org/directory"
 
-# Placeholder replaced by Caddy at runtime, so the token is never written to the configuration file
-export const desec_token = "{env.BF_PROXY_DESEC_TOKEN}"
+# DNS provider modules - tokens are placeholders replaced by Caddy at runtime, so they are never written to the
+# configuration file
+export const dns_providers = {
+    desec: {name: "desec", token: "{env.BF_PROXY_DESEC_TOKEN}"}
+    hetzner: {name: "hetzner", api_token: "{env.BF_PROXY_HETZNER_TOKEN}"}
+}
 
-# Build the DNS challenge configuration using the deSEC provider
+# Build the DNS challenge configuration using the configured DNS provider
 export def dns_challenge [
     --override-domain: string = ""  # Create the TXT record here instead of _acme-challenge.<host> (see dnsOverrideDomain)
     opts: record                    # Options record (see conf opts)
 ]: nothing -> record {
-    mut dns = {provider: {name: "desec", token: $desec_token}}
+    mut dns = {provider: ($dns_providers | get $opts.dns_provider)}
+    if $opts.dns_ttl != "" { $dns = $dns | insert ttl $opts.dns_ttl }
     if $override_domain != "" { $dns = $dns | insert override_domain $override_domain }
     if $opts.dns_propagation_delay != "" { $dns = $dns | insert propagation_delay $opts.dns_propagation_delay }
     if $opts.dns_propagation_timeout != "" { $dns = $dns | insert propagation_timeout $opts.dns_propagation_timeout }

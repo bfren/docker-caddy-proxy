@@ -59,6 +59,20 @@ export def dns_challenge__omits_optional_values_when_not_set [] {
     assert equal ["provider"] ($result | columns)
 }
 
+export def dns_challenge__uses_hetzner_provider [] {
+    let result = dns_challenge (helpers opts | update dns_provider "hetzner")
+
+    assert equal {name: "hetzner", api_token: "{env.BF_PROXY_HETZNER_TOKEN}"} $result.provider
+}
+
+export def dns_challenge__includes_ttl_when_set [] {
+    let with = dns_challenge (helpers opts | update dns_ttl "60s")
+    let without = dns_challenge (helpers opts)
+
+    assert equal "60s" $with.ttl
+    assert equal false ("ttl" in ($without | columns))
+}
+
 export def dns_challenge__uses_default_propagation_delay [] {
     let result = dns_challenge (helpers opts)
 
