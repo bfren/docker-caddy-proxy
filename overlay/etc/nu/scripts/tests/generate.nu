@@ -48,9 +48,9 @@ export def build__uses_default_dns_override_domain_for_proxy_domain_and_default_
 export def build__ignores_default_dns_override_domain_with_http_challenge [] {
     let opts = helpers opts | update dns_override "b.acme.test"
     let result = build_for [] $opts
-    let challenges = $result.apps.tls.automation.policies | each {|p| $p.issuers.0 | get --optional challenges }
+    let has_challenges = $result.apps.tls.automation.policies | each {|p| "challenges" in ($p.issuers.0 | columns) }
 
-    assert equal [null null] $challenges
+    assert equal [false false] $has_challenges
 }
 
 export def build__uses_storage_from_opts [] {
