@@ -66,7 +66,7 @@ Point the DNS records for each host name at your server, run `docker compose up 
 * 🔧 Maintenance page when an upstream is down
 * 🔄 Optional automatic reload when configuration changes, without dropping connections
 * 🧩 Add your own Caddy routes per domain, or take complete control of a domain's configuration
-* 🩺 Health check using Caddy's admin API
+* 🩺 Health check using a local server that isn't logged
 * 👤 Caddy runs as `www` (UID 1000), not root
 * 🧪 Built-in tests
 
@@ -101,7 +101,7 @@ Caddy runs as `www` and needs no extra capabilities: Docker lets unprivileged us
 | `/sites` | Per-domain Caddy configuration - see [below](#custom-domain-configuration).      |
 | `/www`   | `/www/public` is served for `BF_PROXY_DOMAIN`, with the maintenance page.        |
 
-Everything in the volumes is owned by `www` (UID / GID 1000), so the main user account on the host can edit it.
+Everything in the volumes is owned by `www` (UID / GID 1000), and `/ssl` is readable only by its owner. On the host, edit the files as UID 1000 (usually the first user account) or with `sudo`.
 
 ### Environment Variables
 
@@ -145,11 +145,11 @@ See [Alpine + S6](https://github.com/bfren/docker-alpine-s6#configuration) for `
 
 ## How It Works
 
-On start-up, `conf.json` is read (or converted from nginx-proxy format, or generated from the `BF_PROXY_AUTO_*` variables), checked, and turned into one Caddy configuration file. Each domain's part is kept in `/sites/<primary>.json`. Caddy then runs under S6, and the health check asks Caddy's admin API (`localhost:2019`) for its configuration.
+On start-up, `conf.json` is read (or converted from nginx-proxy format, or generated from the `BF_PROXY_AUTO_*` variables), checked, and turned into one Caddy configuration file. Each domain's part is kept in `/sites/<primary>.json`. Caddy then runs under S6. The health check requests a server Caddy runs only on `127.0.0.1:2020`, which has no access log, so health checks don't fill the container log.
 
 ### conf.json
 
-Domains are defined in `/ssl/conf.json` - see [`proxy-conf-sample.json`](proxy-conf-sample.json) for an example and [`proxy-conf-schema.json`](proxy-conf-schema.json) for the full definition. Add `$schema` (as in the [Quickstart](#quickstart)) for validation and autocomplete in your editor.
+Domains are defined in `/ssl/conf.json` - see [`proxy-conf-sample.json`](proxy-conf-sample.json) for an example and [`proxy-conf-schema.json`](proxy-conf-schema.json) for the full definition. Add `$schema` (as in the Quickstart) for validation and autocomplete.
 
 | Property            | Description                                                                    |
 | ------------------- | ------------------------------------------------------------------------------ |
@@ -195,7 +195,7 @@ For every domain:
 * Responses are compressed with zstd or gzip. Images and other compressed formats, responses under 512 bytes and responses the upstream has already compressed are left alone.
 * `Strict-Transport-Security`, `X-Frame-Options`, `X-Content-Type-Options` and `X-XSS-Protection` are added, and `X-Clacks-Overhead: GNU Terry Pratchett` - [because he was a legend](http://www.gnuterrypratchett.com).
 * `X-Real-IP` and Caddy's `X-Forwarded-*` headers are sent upstream. WebSockets work automatically.
-* If the upstream can't be reached (after `retry`, so a quick restart isn't noticed), or returns 502, 503 or 504, an auto-refreshing maintenance page is shown.
+* If the upstream can't be reached (after `retry`, so a quick restart isn't noticed), or returns 502, 503 or 504, an auto-refreshing maintenance page is shown. It is regenerated from a template on every start, so changes to `/www/public/maintenance.html` are lost. `index.html` is only created when `/www/public` doesn't exist, so your own is kept.
 * Requests for unknown hosts are redirected to `BF_PROXY_DOMAIN`, which serves `/www/public` (static files cached for a year, `/favicon.ico` returning 204 unless you add one).
 
 ### AI crawlers
@@ -220,7 +220,7 @@ Use the DNS challenge for wildcard aliases, and for servers that are not reachab
 2. Set `BF_PROXY_HETZNER_TOKEN` to the token - see [keeping the token out of your compose file](#how-do-i-keep-the-hetzner-token-out-of-my-compose-file). It is never written to the generated configuration: Caddy reads it from the environment.
 3. Set `BF_PROXY_ACME_CHALLENGE=dns`, or `"challenge": "dns"` on each domain.
 
-Caddy waits `BF_PROXY_DNS_PROPAGATION_DELAY` (60 seconds) after creating each record before Let's Encrypt checks it. Without the wait, Let's Encrypt can ask a nameserver that doesn't have the record yet, and resolvers then cache the missing record (for the zone's SOA negative TTL), so retries fail too. Certificates are requested in parallel, so the wait happens once, and only when certificates are issued or renewed. Set `BF_PROXY_DNS_TTL=60s` (Hetzner's lowest) so stale challenge values don't stay cached either.
+Caddy waits `BF_PROXY_DNS_PROPAGATION_DELAY` (60 seconds) after creating each record before Let's Encrypt checks it. Without the wait, Let's Encrypt can ask a nameserver that doesn't have the record yet, and resolvers then cache the missing record (for the zone's SOA negative TTL), so retries fail too. The wait happens once per batch of certificates, and only when they are issued or renewed. Set `BF_PROXY_DNS_TTL=60s` (Hetzner's lowest) so stale challenge values don't stay cached either.
 
 #### Domains hosted with another DNS provider
 
@@ -247,13 +247,13 @@ dig +short NS acme.example.net                      # Hetzner's nameservers
 
 ### Automatic reload
 
-Run `proxy-regenerate` after changing `conf.json`, `users.json` or files in `/sites`, or set `BF_PROXY_AUTO_RELOAD=1` to do it automatically. The files are checked every 5 seconds, and once they have stopped changing for 5 seconds (so saving several files causes one reload) configuration is regenerated and Caddy reloads without dropping connections. The checks use about 1 MB of memory.
+Run `proxy-regenerate` after changing `conf.json`, `users.json` or files in `/sites`, or set `BF_PROXY_AUTO_RELOAD=1` to do it automatically. The files are checked every 5 seconds, and once they have stopped changing for 5 seconds (so saving several files causes one reload) configuration is regenerated and Caddy reloads without dropping connections.
 
 If the new configuration is not valid (e.g. a JSON syntax error or a missing upstream), the errors are written to the container log and Caddy keeps running with the current configuration.
 
 ### Helper commands
 
-Run these with `docker exec <container> <command>`.
+Run these with `docker exec <container> <command>`. Basic auth passwords are stored as bcrypt hashes, but `proxy-adduser` takes the password as an argument, so it may be kept in your shell history.
 
 | Command            | Arguments                  | Description                                                    |
 | ------------------ | -------------------------- | -------------------------------------------------------------- |
@@ -281,7 +281,7 @@ Run these with `docker exec <container> <command>`.
 ./run.sh         # builds the image and opens a shell, using the internal CA on 127.0.0.1:8080 and :8443
 ```
 
-`/test` runs this image's tests - configuration checks, generated sites, routes and TLS policies (including DNS delegation), AI bot blocking, certificate listing and renewal, nginx-proxy migration and the helper commands - alongside the base images' tests.
+`/test` runs this image's tests (configuration, generated sites, routes, TLS and DNS delegation, AI bots, certificates, migration and helpers) alongside the base images' tests.
 
 ## Troubleshooting
 
@@ -300,10 +300,6 @@ Caddy can't reach the upstream. It must be on a Docker network shared with the p
 ### My changes don't take effect
 
 Run `proxy-regenerate`, or set `BF_PROXY_AUTO_RELOAD=1`. Domains with `"custom": true` are only regenerated with `proxy-regenerate -d <primary> -f`. Errors are written to the container log.
-
-### Caddy can't bind to port 80 or 443
-
-You are using `network_mode: host` - set `net.ipv4.ip_unprivileged_port_start=80` on the host (see [Ports](#ports)).
 
 ## FAQs
 
