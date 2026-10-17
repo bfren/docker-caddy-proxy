@@ -76,6 +76,26 @@ export def build__disables_trust_install_for_internal_ca [] {
     assert equal null ($without.apps | get --optional pki)
 }
 
+export def build__adds_health_server_on_localhost [] {
+    let result = build_for [] (helpers opts)
+    let health = $result.apps.http.servers.health
+
+    assert equal [$conf.health_listen] $health.listen
+    assert ($conf.health_listen | str starts-with "127.0.0.1:")
+    assert equal true $health.automatic_https.disable
+    assert equal 200 ($health.routes.0.handle.0.status_code)
+}
+
+export def build__never_logs_health_server [] {
+    let with = build_for [] (helpers opts | update access_log true)
+    let without = build_for [] (helpers opts)
+
+    # access logs are only enabled for the https server, never for health checks
+    assert equal {} $with.apps.http.servers.https.logs
+    assert equal null ($with.apps.http.servers.health | get --optional logs)
+    assert equal null ($without.apps.http.servers.health | get --optional logs)
+}
+
 export def build__generates_valid_caddy_configuration [] {
     let input = [
         {primary: "a.test", upstream: "http://a:5000", aliases: ["www.a.test"], redirectToPrimary: true, auth: true}

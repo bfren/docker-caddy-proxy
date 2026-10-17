@@ -98,10 +98,21 @@ export def build [
                         routes: [(routes catch_all_route $opts)]
                     }
                     https: $server
+                    health: (health_server)
                 }
             }
             tls: {automation: {policies: $policies}}
         })
+    }
+}
+
+# Build the health check server - unlike the admin API (which logs every request) it has no access log, and it shows
+# the HTTP app is serving requests
+export def health_server []: nothing -> record {
+    {
+        listen: [$conf.health_listen]
+        automatic_https: {disable: true}
+        routes: [{handle: [{handler: "static_response", status_code: 200, body: "ok"}]}]
     }
 }
 
