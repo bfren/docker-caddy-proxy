@@ -3,6 +3,7 @@ export use certs.nu
 export use conf.nu
 export use generate.nu
 export use migrate.nu
+export use renew.nu
 export use routes.nu
 export use sites.nu
 export use tls.nu

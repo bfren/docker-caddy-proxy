@@ -19,6 +19,15 @@ export def load__generates_file_when_it_does_not_exist [] {
     assert equal ["_comment" "route" "errors" "tls"] ($result | columns)
 }
 
+export def load__uses_dns_override_domain_in_tls_policy [] {
+    let dir = mktemp --directory
+    let d = conf normalise {primary: "a.test", upstream: "http://a", challenge: "dns", dnsOverrideDomain: "b.acme.test"} (helpers opts)
+
+    let result = load $d (helpers opts) $dir
+
+    assert equal "b.acme.test" $result.tls.issuers.0.challenges.dns.override_domain
+}
+
 export def load__generates_file_for_custom_domain_when_it_does_not_exist [] {
     let dir = mktemp --directory
     let d = conf normalise {primary: "a.test", upstream: "http://a", custom: true} (helpers opts)

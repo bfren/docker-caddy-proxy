@@ -28,34 +28,60 @@ export def issuer__uses_internal_ca_when_enabled [] {
     assert equal {module: "internal"} $result
 }
 
-export def issuer__dns_uses_desec_and_disables_other_challenges [] {
+export def issuer__dns_uses_hetzner_and_disables_other_challenges [] {
     let result = issuer "dns" (helpers opts)
 
-    assert equal {name: "desec", token: "{env.BF_PROXY_DESEC_TOKEN}"} $result.challenges.dns.provider
+    assert equal {name: "hetzner", api_token: "{env.BF_PROXY_HETZNER_TOKEN}"} $result.challenges.dns.provider
     assert equal true $result.challenges.http.disabled
     assert equal true ($result.challenges | get tls-alpn | get disabled)
 }
 
+
+export def issuer__dns_uses_override_domain [] {
+    let result = issuer --dns-override "b.acme.test" "dns" (helpers opts)
+
+    assert equal "b.acme.test" $result.challenges.dns.override_domain
+}
+
+export def issuer__http_ignores_override_domain [] {
+    let result = issuer --dns-override "b.acme.test" "http" (helpers opts)
+
+    assert equal null ($result | get --optional challenges)
+}
 
 #======================================================================================================================
 # dns_challenge
 #======================================================================================================================
 
 export def dns_challenge__omits_optional_values_when_not_set [] {
-    let result = dns_challenge (helpers opts)
+    let result = dns_challenge (helpers opts | update dns_propagation_delay "")
 
     assert equal ["provider"] ($result | columns)
 }
 
+export def dns_challenge__includes_ttl_when_set [] {
+    let with = dns_challenge (helpers opts | update dns_ttl "60s")
+    let without = dns_challenge (helpers opts)
+
+    assert equal "60s" $with.ttl
+    assert equal false ("ttl" in ($without | columns))
+}
+
+export def dns_challenge__uses_default_propagation_delay [] {
+    let result = dns_challenge (helpers opts)
+
+    assert equal "60s" $result.propagation_delay
+}
+
 export def dns_challenge__includes_optional_values_when_set [] {
     let opts = helpers opts
-        | update dns_propagation_delay "60s"
+        | update dns_propagation_delay "90s"
         | update dns_propagation_timeout "5m"
         | update dns_resolvers ["1.1.1.1" "9.9.9.9"]
 
     let result = dns_challenge $opts
 
-    assert equal "60s" $result.propagation_delay
+    assert equal "90s" $result.propagation_delay
     assert equal "5m" $result.propagation_timeout
     assert equal ["1.1.1.1" "9.9.9.9"] $result.resolvers
 }
@@ -70,6 +96,12 @@ export def policy__includes_subjects [] {
 
     assert equal ["a.test" "*.a.test"] $result.subjects
     assert equal 1 ($result.issuers | length)
+}
+
+export def policy__passes_override_domain_to_issuer [] {
+    let result = policy --dns-override "b.acme.test" ["a.test"] "dns" (helpers opts)
+
+    assert equal "b.acme.test" $result.issuers.0.challenges.dns.override_domain
 }
 
 export def policy__without_subjects_is_default_policy [] {

@@ -9,9 +9,12 @@ export def opts []: nothing -> record {
         internal_ca: false
         challenge: "http"
         retry: "5s"
-        dns_propagation_delay: ""
+        dns_provider: "hetzner"
+        dns_ttl: ""
+        dns_propagation_delay: "60s"
         dns_propagation_timeout: ""
         dns_resolvers: []
+        dns_override_zone: ""
         harden: false
         redirect_to_primary: false
         block_ai_bots: true
