@@ -23,16 +23,16 @@ This is the successor to [bfren/nginx-proxy](https://github.com/bfren/docker-ngi
 ```yaml
 services:
   proxy:
-    image: bfren/caddy-proxy:1
+    image: quay.io/bfren/caddy-proxy:1.0
     restart: unless-stopped
     ports:
       - "0.0.0.0:80:80"
       - "0.0.0.0:443:443"
       - "0.0.0.0:443:443/udp"
     environment:
-      BF_PROXY_DOMAIN: proxy.example.com
-      BF_PROXY_LETS_ENCRYPT_EMAIL: you@example.com
-      BF_PROXY_LETS_ENCRYPT_LIVE: 0
+      - BF_PROXY_DOMAIN=proxy.example.com
+      - BF_PROXY_LETS_ENCRYPT_EMAIL=you@example.com
+      - BF_PROXY_LETS_ENCRYPT_LIVE=0
     volumes:
       - ./ssl:/ssl
       - ./sites:/sites
@@ -53,7 +53,7 @@ services:
 }
 ```
 
-Point the DNS records for each host name at your server, run `docker compose up -d`, and check `docker compose logs proxy`. Certificates come from Let's Encrypt's staging server (which browsers don't trust) until you set `BF_PROXY_LETS_ENCRYPT_LIVE: 1` - do that once everything works, because the live server is rate limited.
+Point the DNS records for each host name at your server, run `docker compose up -d`, and check `docker compose logs proxy`. Certificates come from Let's Encrypt's staging server (which browsers don't trust) until you set `BF_PROXY_LETS_ENCRYPT_LIVE=1` - do that once everything works, because the live server is rate limited.
 
 ## Features
 
@@ -78,7 +78,7 @@ Images are published to Docker Hub (`bfren/caddy-proxy`) and Quay.io (`quay.io/b
 | --------- | ------- | ------------------------------------------ |
 | `latest`  |         | You always want the newest image           |
 | `MAJOR`   | `1`     | You want updates, but not breaking changes |
-| `MINOR`   | `1.0`   | You want fixes only                        |
+| `MINOR`   | `1.0`   | You want fixes only - **recommended**      |
 | `VERSION` | `1.0.0` | You want to pin this image exactly         |
 
 ## Configuration
@@ -132,7 +132,7 @@ Everything in the volumes is owned by `www` (UID / GID 1000), and `/ssl` is read
 | `BF_PROXY_AUTO_CUSTOM`                 | `0`, `1`      | Mark the generated domain as `custom`.                          | `0`        |
 | `BF_PROXY_MAINTENANCE_REFRESH_SECONDS` | integer       | Maintenance page refresh interval.                              | `6`        |
 
-See [Alpine + S6](https://github.com/bfren/docker-alpine-s6#configuration) for `BF_DEBUG`, `BF_TZ` and the other base image variables.
+See [Alpine + S6](https://github.com/bfren/docker-alpine-s6#environment-variables) for `BF_DEBUG`, `BF_TZ` and the other base image variables.
 
 ### Build Arguments
 
@@ -316,7 +316,7 @@ Then use e.g. `"upstream": "http://host.docker.internal:8080"`. The service must
 
 ### How do I keep the Hetzner token out of my compose file?
 
-Put it in a `.env` file next to `docker-compose.yml` (and out of version control), e.g. `HETZNER_TOKEN=...`, then use `BF_PROXY_HETZNER_TOKEN: ${HETZNER_TOKEN}` in `environment`. With the list syntax (`- KEY=value`) don't add quotes - they become part of the value.
+Put it in a `.env` file next to `docker-compose.yml` (and out of version control), e.g. `HETZNER_TOKEN=...`, then add `- BF_PROXY_HETZNER_TOKEN=${HETZNER_TOKEN}` to `environment`. Don't add quotes - they become part of the value.
 
 ### Can I use a DNS provider other than Hetzner?
 
