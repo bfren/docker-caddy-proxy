@@ -16,7 +16,7 @@ export const duration_pattern = '^(\d+(ms|s|m))?$'
 # Valid host names (used for DNS challenge override domains)
 export const host_pattern = '^([a-z0-9_]([a-z0-9_-]*[a-z0-9])?\.)+[a-z0-9]([a-z0-9-]*[a-z0-9])?$'
 
-# Address of the health check server used by bf-healthcheck - bound to localhost so it is never exposed, and with no
+# Address of the health check server used by health.d/10-caddy.nu - bound to localhost so it is never exposed, and with no
 # access log so health checks do not fill the container log
 export const health_listen = "127.0.0.1:2020"
 
