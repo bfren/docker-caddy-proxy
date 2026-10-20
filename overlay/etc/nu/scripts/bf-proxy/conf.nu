@@ -7,8 +7,18 @@ export const schema = "https://raw.githubusercontent.com/bfren/docker-caddy-prox
 # Valid ACME challenge types
 export const challenges = ["http" "dns"]
 
+# Valid DNS providers for the dns challenge - each uses BF_PROXY_<PROVIDER>_TOKEN
+export const dns_providers = ["hetzner"]
+
 # Valid retry durations (empty disables retries)
 export const duration_pattern = '^(\d+(ms|s|m))?$'
+
+# Valid host names (used for DNS challenge override domains)
+export const host_pattern = '^([a-z0-9_]([a-z0-9_-]*[a-z0-9])?\.)+[a-z0-9]([a-z0-9-]*[a-z0-9])?$'
+
+# Address of the health check server used by bf-healthcheck - bound to localhost so it is never exposed, and with no
+# access log so health checks do not fill the container log
+export const health_listen = "127.0.0.1:2020"
 
 # Valid load balancing selection policies
 export const lb_policies = ["random" "round_robin" "least_conn" "first" "ip_hash" "uri_hash" "client_ip_hash"]
@@ -22,9 +32,12 @@ export def opts []: nothing -> record {
         internal_ca: (bf env check PROXY_USE_INTERNAL_CA)
         challenge: (bf env PROXY_ACME_CHALLENGE "http")
         retry: (bf env --safe PROXY_UPSTREAM_RETRY)
+        dns_provider: (bf env PROXY_DNS_PROVIDER "hetzner" | str trim | str lowercase)
+        dns_ttl: (bf env --safe PROXY_DNS_TTL)
         dns_propagation_delay: (bf env --safe PROXY_DNS_PROPAGATION_DELAY)
         dns_propagation_timeout: (bf env --safe PROXY_DNS_PROPAGATION_TIMEOUT)
         dns_resolvers: (bf env --safe PROXY_DNS_RESOLVERS | split row " " | where $it != "")
+        dns_override_zone: (bf env --safe PROXY_DNS_OVERRIDE_ZONE | str trim | str lowercase)
         harden: (bf env check PROXY_HARDEN)
         redirect_to_primary: (bf env check PROXY_SSL_REDIRECT_TO_CANONICAL)
         block_ai_bots: (bf env check PROXY_BLOCK_AI_BOTS)
@@ -79,13 +92,10 @@ export def normalise [
     opts: record    # Options record (see opts)
 ]: nothing -> record {
     let d = $domain
+    let primary = $d | get --optional primary | default "" | str trim | str lowercase
+    let challenge = $d | get --optional challenge | default $opts.challenge
     {
-        primary: ($d
-            | get --optional primary
-            | default ""
-            | str trim
-            | str lowercase
-        )
+        primary: $primary
         aliases: ($d
             | get --optional aliases
             | default []
@@ -105,9 +115,13 @@ export def normalise [
             | default $opts.retry
             | into string
         )
-        challenge: ($d
-            | get --optional challenge
-            | default $opts.challenge
+        challenge: $challenge
+        # BF_PROXY_DNS_OVERRIDE_ZONE only applies to domains using the dns challenge - set to "" to disable it
+        dns_override: ($d
+            | get --optional dnsOverrideDomain
+            | default (if $challenge == "dns" { delegated_name $primary $opts } else { "" })
+            | str trim
+            | str lowercase
         )
         redirect_to_primary: ($d
             | get --optional redirectToPrimary
@@ -133,6 +147,10 @@ export def normalise [
             | get --optional compress
             | default true
         )
+        tls_skip_verify: ($d
+            | get --optional tlsSkipVerify
+            | default false
+        )
         custom: ($d
             | get --optional custom
             | default false
@@ -147,6 +165,15 @@ export def as_list []: any -> list<string> {
         | where {|x| $x != null }
         | each {|x| $x | into string | str trim }
         | where {|x| $x != "" }
+}
+
+# Return the name used for a host's DNS challenge records in BF_PROXY_DNS_OVERRIDE_ZONE,
+# e.g. send.example.com.acme.example.net (empty if the zone is not set)
+export def delegated_name [
+    host: string    # Host name, e.g. send.example.com
+    opts: record    # Options record (see opts)
+]: nothing -> string {
+    if $host == "" or $opts.dns_override_zone == "" { "" } else { $"($host).($opts.dns_override_zone)" }
 }
 
 # Return all host names (primary and aliases) for a normalised domain
@@ -227,6 +254,15 @@ export def validate_domain [
             (($wildcards | is-not-empty) and $d.challenge != "dns")
             $"wildcard aliases \(($wildcards | str join ', ')\) require the dns challenge"
         ]
+        # the TXT record can be created in another zone (e.g. when _acme-challenge is a CNAME to a zone hosted by the DNS provider)
+        [
+            ($d.dns_override != "" and $d.challenge != "dns")
+            "dnsOverrideDomain requires the dns challenge"
+        ]
+        [
+            ($d.dns_override != "" and not ($d.dns_override =~ $host_pattern))
+            $"dnsOverrideDomain '($d.dns_override)' must be a host name, e.g. acme.example.net"
+        ]
         # there must be a default upstream unless the domain is custom (when the user controls everything)
         [
             (($d.upstream | is-empty) and (not $d.custom))
@@ -299,13 +335,17 @@ export def check_env [
     opts: record            # Options record (see opts)
 ]: nothing -> list<string> {
     let uses_dns = ($opts.challenge == "dns") or ($domains | any {|d| $d.challenge == "dns" })
-    let no_token = (bf env --safe PROXY_DESEC_TOKEN) == ""
+    let token_var = $"PROXY_($opts.dns_provider | str uppercase)_TOKEN"
+    let no_token = (bf env --safe $token_var) == ""
 
     failures [
         [($opts.proxy_domain == "")                             "BF_PROXY_DOMAIN must be set"]
         [($opts.email == "" and (not $opts.internal_ca))        "BF_PROXY_LETS_ENCRYPT_EMAIL must be set"]
         [($opts.challenge not-in $challenges)                   $"BF_PROXY_ACME_CHALLENGE must be one of ($challenges | str join ', ')"]
-        [($uses_dns and $no_token and (not $opts.internal_ca))  "BF_PROXY_DESEC_TOKEN must be set to use the dns challenge"]
+        [($opts.dns_provider not-in $dns_providers)             $"BF_PROXY_DNS_PROVIDER must be one of ($dns_providers | str join ', ')"]
+        [($uses_dns and $no_token and (not $opts.internal_ca))  $"BF_($token_var) must be set to use the dns challenge with ($opts.dns_provider)"]
+        [(not ($opts.dns_ttl =~ $duration_pattern))             $"BF_PROXY_DNS_TTL '($opts.dns_ttl)' must be a duration, e.g. 60s"]
+        [($opts.dns_override_zone != "" and not ($opts.dns_override_zone =~ $host_pattern))  $"BF_PROXY_DNS_OVERRIDE_ZONE '($opts.dns_override_zone)' must be a domain name, e.g. acme.example.net"]
     ]
 }
 

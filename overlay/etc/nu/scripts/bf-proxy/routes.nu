@@ -32,6 +32,7 @@ export def parse_upstream [upstream: string]: nothing -> record {
 # Build a reverse_proxy handler for one or more upstream URLs
 export def reverse_proxy [
     --retry: string = ""    # Keep retrying upstreams that cannot be reached for this long, e.g. 5s (empty or 0s to disable)
+    --tls-skip-verify       # Do not verify the certificates of https upstreams (e.g. self-signed)
     upstreams: list<string> # Upstream URLs - must all use the same scheme
     lb: string              # Load balancing selection policy (only used with multiple upstreams)
     public: string          # Public directory containing the maintenance page
@@ -40,7 +41,9 @@ export def reverse_proxy [
     let handler = {
         handler: "reverse_proxy"
         upstreams: ($parsed | each {|p| {dial: $p.dial} })
-        headers: {request: {set: {"X-Real-IP": ["{http.request.remote.host}"]}}}
+        # always pass the original Host - Caddy changes it to the upstream address for https upstreams, which breaks
+        # apps that check it (e.g. UniFi OS rejects WebSockets when Host does not match Origin)
+        headers: {request: {set: {Host: ["{http.request.hostport}"], "X-Real-IP": ["{http.request.remote.host}"]}}}
         handle_response: [{
             match: {status_code: $maintenance_codes}
             routes: [{handle: (maintenance_handlers $public)}]
@@ -48,7 +51,8 @@ export def reverse_proxy [
     }
 
     let with_tls = if ($parsed | any {|p| $p.tls }) {
-        $handler | insert transport {protocol: "http", tls: {}}
+        let tls = if $tls_skip_verify { {insecure_skip_verify: true} } else { {} }
+        $handler | insert transport {protocol: "http", tls: $tls}
     } else { $handler }
 
     # choose between multiple upstreams, and retry upstreams that cannot be reached (e.g. while a container restarts)
@@ -117,6 +121,7 @@ export def auth_handler [
 # Build a route for an entry in a domain's 'routes' in conf.json
 export def path_route [
     --retry: string = ""    # Keep retrying upstreams that cannot be reached for this long (see reverse_proxy)
+    --tls-skip-verify       # Do not verify the certificates of https upstreams (see reverse_proxy)
     route: record           # Route definition from conf.json
     public: string          # Public directory containing the maintenance page
 ]: nothing -> record {
@@ -127,7 +132,7 @@ export def path_route [
     let rewrite = if ($strip | is-empty) { [] } else { [{handler: "rewrite", strip_path_prefix: $strip}] }
 
     let action = if ($route | get --optional upstream) != null {
-        reverse_proxy --retry $retry ($route.upstream | conf as_list) ($route | get --optional lb | default "random") $public
+        reverse_proxy --retry $retry --tls-skip-verify=$tls_skip_verify ($route.upstream | conf as_list) ($route | get --optional lb | default "random") $public
     } else if ($route | get --optional redirect) != null {
         {
             handler: "static_response"
@@ -175,11 +180,12 @@ export def domain_route [
     ]
 
     # routes from conf.json, and the default upstream
-    let path_routes = $d.routes | each {|r| path_route --retry $d.retry $r $opts.public }
+    let skip = $d.tls_skip_verify
+    let path_routes = $d.routes | each {|r| path_route --retry $d.retry --tls-skip-verify=$skip $r $opts.public }
     let default = if ($d.upstream | is-empty) {
         []
     } else {
-        [{handle: [(reverse_proxy --retry $d.retry $d.upstream $d.lb $opts.public)]}]
+        [{handle: [(reverse_proxy --retry $d.retry --tls-skip-verify=$skip $d.upstream $d.lb $opts.public)]}]
     }
 
     {

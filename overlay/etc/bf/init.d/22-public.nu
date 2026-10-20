@@ -1,4 +1,5 @@
 use bf
+use bf-s6
 bf env load
 
 # Ensure the public directory exists and generate the maintenance page
@@ -14,7 +15,7 @@ def main [] {
 
     # generate the maintenance page
     bf write "Generating maintenance page."
-    bf esh template $"($public)/maintenance.html"
+    bf-s6 esh template $"($public)/maintenance.html"
 
     # return nothing
     return

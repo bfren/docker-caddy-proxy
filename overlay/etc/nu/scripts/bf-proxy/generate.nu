@@ -66,9 +66,10 @@ export def build [
         | where $it != null
 
     # TLS automation: one policy per domain, then the proxy domain, then a default policy for any other names
+    # (the default policy has no host name to delegate DNS challenges for, so it never uses BF_PROXY_DNS_OVERRIDE_ZONE)
     let policies = [
         ...($configs | each {|c| $c | get --optional tls } | where $it != null)
-        (tls policy [$opts.proxy_domain] $opts.challenge $opts)
+        (tls policy --dns-override (conf delegated_name $opts.proxy_domain $opts) [$opts.proxy_domain] $opts.challenge $opts)
         (tls policy [] $opts.challenge $opts)
     ]
 
@@ -97,10 +98,21 @@ export def build [
                         routes: [(routes catch_all_route $opts)]
                     }
                     https: $server
+                    health: (health_server)
                 }
             }
             tls: {automation: {policies: $policies}}
         })
+    }
+}
+
+# Build the health check server - unlike the admin API (which logs every request) it has no access log, and it shows
+# the HTTP app is serving requests
+export def health_server []: nothing -> record {
+    {
+        listen: [$conf.health_listen]
+        automatic_https: {disable: true}
+        routes: [{handle: [{handler: "static_response", status_code: 200, body: "ok"}]}]
     }
 }
 

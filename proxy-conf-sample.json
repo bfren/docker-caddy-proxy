@@ -19,9 +19,23 @@
             ],
             "challenge": "dns",
             "routes": [
-                { "path": "/api/*", "upstream": [ "http://api1:8080", "http://api2:8080" ], "lb": "round_robin", "stripPrefix": "/api" },
-                { "path": "/old/*", "redirect": "https://test.com/new{http.request.uri.path}" },
-                { "path": "/files/*", "root": "/www/files" }
+                {
+                    "path": "/api/*",
+                    "upstream": [
+                        "http://api1:8080",
+                        "http://api2:8080"
+                    ],
+                    "lb": "round_robin",
+                    "stripPrefix": "/api"
+                },
+                {
+                    "path": "/old/*",
+                    "redirect": "https://test.com/new{http.request.uri.path}"
+                },
+                {
+                    "path": "/files/*",
+                    "root": "/www/files"
+                }
             ],
             "headers": {
                 "X-Frame-Options": "DENY"

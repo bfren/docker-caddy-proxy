@@ -2,6 +2,7 @@
 
 use bf
 use bf-proxy
+use bf-s6
 bf env load -x
 
 # Regenerate Caddy configuration from conf.json and reload Caddy
@@ -10,6 +11,6 @@ def main [
     --force (-f)            # Regenerate domain configuration files even if they are marked as custom
 ] {
     bf-proxy generate --domain=$domain --force=$force
-    bf ch apply_file "20-proxy"
+    bf-s6 ch apply_file "20-proxy"
     bf-proxy reload
 }

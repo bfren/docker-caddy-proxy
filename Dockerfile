@@ -1,9 +1,9 @@
 #======================================================================================================================
-# STAGE 0: build Caddy with the deSEC DNS provider module, and certinfo (used by proxy-certs)
+# STAGE 0: build Caddy with the Hetzner DNS provider module, and certinfo (used by proxy-certs)
 #======================================================================================================================
 
 ARG CADDY_BUILDER=caddy:2.11-builder-alpine
-ARG BASE_IMAGE=quay.io/bfren/alpine-s6:alpine3.24-6.5.0
+ARG BASE_IMAGE=quay.io/bfren/alpine-s6:alpine3.24-6.6.0
 
 FROM --platform=${BUILDPLATFORM} ${CADDY_BUILDER} AS build
 ARG TARGETOS
@@ -11,13 +11,13 @@ ARG TARGETARCH
 ARG TARGETVARIANT
 
 ARG CADDY_VERSION=2.11.7
-ARG CADDY_DESEC_VERSION=1.1.0
+ARG CADDY_HETZNER_VERSION=2.0.1
 
 RUN \
     # cross-compile for the target platform (GOARM is only used for linux/arm/v7)
     GOOS=${TARGETOS} GOARCH=${TARGETARCH} GOARM=${TARGETVARIANT#v} \
     xcaddy build v${CADDY_VERSION} \
-        --with github.com/caddy-dns/desec@v${CADDY_DESEC_VERSION} \
+        --with github.com/caddy-dns/hetzner/v2@v${CADDY_HETZNER_VERSION} \
         --output /caddy
 
 # certinfo must come after Caddy, so changing certinfo does not invalidate the cached Caddy build
@@ -64,11 +64,18 @@ ENV \
     BF_PROXY_USE_INTERNAL_CA=0 \
     # default ACME challenge for domains: 'http' or 'dns' (can be set per domain in conf.json)
     BF_PROXY_ACME_CHALLENGE=http \
-    # optional - time to wait before checking DNS propagation (e.g. 60s), and how long to wait for it (e.g. 5m)
-    BF_PROXY_DNS_PROPAGATION_DELAY= \
+    # DNS provider used for the dns challenge: 'hetzner' (with BF_PROXY_HETZNER_TOKEN)
+    BF_PROXY_DNS_PROVIDER=hetzner \
+    # optional - TTL of DNS challenge records (e.g. 60s)
+    BF_PROXY_DNS_TTL= \
+    # time to wait after creating a DNS challenge record before it is checked, so it can reach all of the DNS
+    # provider's nameservers (0s to disable) - and optionally how long to wait for it (e.g. 5m)
+    BF_PROXY_DNS_PROPAGATION_DELAY=60s \
     BF_PROXY_DNS_PROPAGATION_TIMEOUT= \
     # optional - space-separated DNS resolvers to use when checking propagation (e.g. "1.1.1.1 9.9.9.9")
     BF_PROXY_DNS_RESOLVERS= \
+    # optional - create DNS challenge TXT records at <primary>.<zone> instead of _acme-challenge.<host> (can be overridden per domain in conf.json)
+    BF_PROXY_DNS_OVERRIDE_ZONE= \
     # set to 1 to regenerate and reload configuration automatically when conf.json, users.json or /sites change
     BF_PROXY_AUTO_RELOAD=0 \
     # keep retrying upstreams that cannot be reached for this long before showing the maintenance page (0s to disable)

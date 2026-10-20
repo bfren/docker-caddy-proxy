@@ -31,6 +31,14 @@ export def normalise__applies_defaults_from_opts [] {
     assert equal [] $result.routes
     assert equal true $result.clacks
     assert equal true $result.compress
+    assert equal false $result.tls_skip_verify
+    assert equal "" $result.dns_override
+}
+
+export def normalise__tls_skip_verify_can_be_enabled [] {
+    let result = normalise {primary: "a.test", upstream: "https://a", tlsSkipVerify: true} (helpers opts)
+
+    assert equal true $result.tls_skip_verify
 }
 
 export def normalise__clacks_can_be_disabled [] {
@@ -118,6 +126,57 @@ export def validate__allows_wildcard_with_dns_challenge [] {
     let result = validate [$d] $opts
 
     assert equal [] $result
+}
+
+export def validate__allows_dns_override_domain_with_dns_challenge [] {
+    let opts = helpers opts
+    let d = normalise {primary: "a.test", upstream: "http://a", challenge: "dns", dnsOverrideDomain: " B.Acme.Test "} $opts
+
+    let result = validate [$d] $opts
+
+    assert equal "b.acme.test" $d.dns_override
+    assert equal [] $result
+}
+
+export def validate__dns_override_domain_requires_dns_challenge [] {
+    let opts = helpers opts
+    let d = normalise {primary: "a.test", upstream: "http://a", dnsOverrideDomain: "b.acme.test"} $opts
+
+    let result = validate [$d] $opts
+
+    assert equal ["a.test: dnsOverrideDomain requires the dns challenge."] $result
+}
+
+export def normalise__delegates_dns_challenge_to_override_zone [] {
+    let opts = helpers opts | update dns_override_zone "acme.test"
+
+    let dns = normalise {primary: " Send.A.Test ", upstream: "http://a", challenge: "dns"} $opts
+    let http = normalise {primary: "a.test", upstream: "http://a"} $opts
+
+    assert equal "send.a.test.acme.test" $dns.dns_override
+    assert equal "" $http.dns_override
+    assert equal [] (validate [$http] $opts)
+}
+
+export def normalise__domain_dns_override_domain_replaces_override_zone [] {
+    let opts = helpers opts | update challenge "dns" | update dns_override_zone "acme.test"
+
+    let other = normalise {primary: "a.test", upstream: "http://a", dnsOverrideDomain: "c.acme.test"} $opts
+    let disabled = normalise {primary: "a.test", upstream: "http://a", dnsOverrideDomain: ""} $opts
+
+    assert equal "c.acme.test" $other.dns_override
+    assert equal "" $disabled.dns_override
+}
+
+export def validate__dns_override_domain_must_be_a_host_name [] {
+    let opts = helpers opts
+    let invalid = ["https://b.acme.test" "*.acme.test" "acme" "b.acme.test/x" "b..acme.test"]
+
+    $invalid | each {|x|
+        let d = normalise {primary: "a.test", upstream: "http://a", challenge: "dns", dnsOverrideDomain: $x} $opts
+        let result = validate [$d] $opts
+        assert ($result | any {|e| $e | str contains "must be a host name" }) $"($x) should be rejected"
+    } | ignore
 }
 
 export def validate__checks_retry_duration [] {
@@ -230,15 +289,43 @@ export def check_env__does_not_require_email_with_internal_ca [] {
     assert equal [] $result
 }
 
-export def check_env__requires_desec_token_for_dns_challenge [] {
+export def check_env__checks_dns_override_zone [] {
+    let result = check_env [] (helpers opts | update dns_override_zone "*.acme.test")
+
+    assert ($result | any {|e| $e | str contains "BF_PROXY_DNS_OVERRIDE_ZONE" })
+}
+
+export def delegated_name__adds_host_to_override_zone [] {
+    let opts = helpers opts | update dns_override_zone "acme.test"
+
+    assert equal "send.a.test.acme.test" (delegated_name "send.a.test" $opts)
+    assert equal "" (delegated_name "" $opts)
+    assert equal "" (delegated_name "send.a.test" (helpers opts))
+}
+
+export def check_env__requires_token_for_dns_challenge [] {
     let opts = helpers opts
     let d = normalise {primary: "a.test", upstream: "http://a", challenge: "dns"} $opts
 
-    let without = with-env {BF_PROXY_DESEC_TOKEN: ""} { check_env [$d] $opts }
-    let with = with-env {BF_PROXY_DESEC_TOKEN: "token"} { check_env [$d] $opts }
+    let without = with-env {BF_PROXY_HETZNER_TOKEN: ""} { check_env [$d] $opts }
+    let with = with-env {BF_PROXY_HETZNER_TOKEN: "token"} { check_env [$d] $opts }
 
-    assert ($without | any {|x| $x | str contains "BF_PROXY_DESEC_TOKEN" })
+    assert ($without | any {|x| $x | str contains "BF_PROXY_HETZNER_TOKEN" })
     assert equal [] $with
+}
+
+export def check_env__rejects_unknown_dns_provider [] {
+    let result = check_env [] (helpers opts | update dns_provider "route53")
+
+    assert ($result | any {|x| $x | str contains "BF_PROXY_DNS_PROVIDER" })
+}
+
+export def check_env__checks_dns_ttl [] {
+    let valid = check_env [] (helpers opts | update dns_ttl "60s")
+    let invalid = check_env [] (helpers opts | update dns_ttl "60")
+
+    assert equal [] $valid
+    assert ($invalid | any {|x| $x | str contains "BF_PROXY_DNS_TTL" })
 }
 
 
