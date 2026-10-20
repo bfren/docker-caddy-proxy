@@ -277,7 +277,7 @@ Run these with `docker exec <container> <command>`. Basic auth passwords are sto
 ## Testing
 
 ```sh
-./test.sh        # builds the image and runs /test
+./test.nu        # builds the image and runs /test
 ./run.sh         # builds the image and opens a shell, using the internal CA on 127.0.0.1:8080 and :8443
 ```
 
