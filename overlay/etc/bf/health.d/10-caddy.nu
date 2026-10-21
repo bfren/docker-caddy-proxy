@@ -1,5 +1,3 @@
-#!/usr/bin/nu
-
 use bf
 use bf-proxy/conf.nu
 bf env load -x

@@ -11,6 +11,6 @@ def main [
     --force (-f)            # Regenerate domain configuration files even if they are marked as custom
 ] {
     bf-proxy generate --domain=$domain --force=$force
-    bf-s6 ch apply_file "20-proxy"
+    bf-s6 ch apply_file "10-proxy"
     bf-proxy reload
 }

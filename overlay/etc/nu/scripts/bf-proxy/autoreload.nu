@@ -12,7 +12,7 @@ export def main []: nothing -> nothing {
     bf write "Configuration has changed - regenerating." autoreload
     try {
         generate
-        bf-s6 ch apply_file "20-proxy"
+        bf-s6 ch apply_file "10-proxy"
         reload
     } catch {
         bf write notok "Configuration has not been reloaded - fix the errors above and save again." autoreload
