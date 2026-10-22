@@ -1,7 +1,8 @@
 use bots.nu
 use conf.nu
 
-# Response headers added to every proxied site (can be overridden per domain using 'headers' in conf.json)
+# Response headers added to every proxied site (can be overridden per domain using 'headers' in conf.json, or set to
+# null there so the proxy does not add them - e.g. Vaultwarden must control X-Frame-Options itself)
 export const secure_headers = {
     "Strict-Transport-Security": "max-age=63072000"
     "X-Frame-Options": "SAMEORIGIN"
@@ -77,15 +78,18 @@ export def maintenance_handlers [public: string]: nothing -> list<record> {
     ]
 }
 
-# Build a headers handler from the secure headers (plus the clacks header if enabled) merged with custom headers
+# Build a headers handler from the secure headers (plus the clacks header if enabled) merged with custom headers -
+# a custom header set to null is not added at all, so the upstream's own value (or none) is passed through
 export def headers_handler [
     --clacks (-c)   # Add the X-Clacks-Overhead header
-    custom: record  # Custom headers to add or override
+    custom: record  # Custom headers to add, override, or set to null to leave out
 ]: nothing -> record {
-    let merged = $secure_headers
+    let set = $secure_headers
         | merge (if $clacks { $clacks_header } else { {} })
         | merge $custom
-    let set = $merged | items {|k, v| {$k: [($v | into string)]} } | reduce --fold {} {|it, acc| $acc | merge $it }
+        | transpose key value
+        | where value != null
+        | reduce --fold {} {|it, acc| $acc | insert $it.key [($it.value | into string)] }
     {handler: "headers", response: {set: $set, deferred: true}}
 }
 

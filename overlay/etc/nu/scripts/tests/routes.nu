@@ -132,6 +132,13 @@ export def headers_handler__custom_headers_override_and_extend [] {
     assert equal ["1"] ($result.response.set | get "X-Extra")
 }
 
+export def headers_handler__null_custom_header_is_not_added [] {
+    let result = headers_handler {"X-Frame-Options": null}
+
+    assert equal null ($result.response.set | get --optional "X-Frame-Options")
+    assert equal ["nosniff"] ($result.response.set | get "X-Content-Type-Options")
+}
+
 
 export def headers_handler__adds_clacks_header_when_enabled [] {
     let with = headers_handler --clacks {}
