@@ -123,6 +123,8 @@ export def headers_handler__adds_secure_headers [] {
 
     assert equal ["SAMEORIGIN"] ($result.response.set | get "X-Frame-Options")
     assert equal ["max-age=63072000"] ($result.response.set | get "Strict-Transport-Security")
+    assert equal ["strict-origin-when-cross-origin"] ($result.response.set | get "Referrer-Policy")
+    assert equal null ($result.response.set | get --optional "X-XSS-Protection") "browsers no longer use X-XSS-Protection"
 }
 
 export def headers_handler__custom_headers_override_and_extend [] {
