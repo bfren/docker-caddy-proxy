@@ -166,9 +166,12 @@
                 },
                 "headers": {
                     "type": "object",
-                    "description": "Response headers to add or override (the secure headers are always added unless overridden).",
+                    "description": "Response headers to add or override (the secure headers are always added unless overridden) - null stops a header being added, e.g. X-Frame-Options for Vaultwarden.",
                     "additionalProperties": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     }
                 },
                 "routes": {

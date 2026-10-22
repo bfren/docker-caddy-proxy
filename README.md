@@ -162,7 +162,7 @@ Domains are defined in `/ssl/conf.json` - see [`proxy-conf-sample.json`](proxy-c
 | `dnsOverrideDomain` | Where to create DNS challenge records (`""` to disable).                       |
 | `redirectToPrimary` | Redirect aliases to the primary domain.                                        |
 | `auth`              | Basic auth: `true` for all users, or a list of names.                          |
-| `headers`           | Response headers to add or override.                                           |
+| `headers`           | Response headers to add or override - `null` stops the proxy adding one.       |
 | `routes`            | Extra routes, before the default upstream - see below.                         |
 | `compress`          | `false` to turn off compression.                                               |
 | `clacks`            | `false` to remove the `X-Clacks-Overhead` header.                              |
@@ -194,6 +194,7 @@ For every domain:
 * HTTP is redirected to HTTPS, and certificates are requested and renewed automatically.
 * Responses are compressed with zstd or gzip. Images and other compressed formats, responses under 512 bytes and responses the upstream has already compressed are left alone.
 * `Strict-Transport-Security`, `X-Frame-Options`, `X-Content-Type-Options` and `X-XSS-Protection` are added, and `X-Clacks-Overhead: GNU Terry Pratchett` - [because he was a legend](http://www.gnuterrypratchett.com).
+  To stop one being added, set it to `null` in the domain's `headers` - e.g. Vaultwarden needs `"X-Frame-Options": null`, because it shows its two-factor pages in frames and sets the header itself everywhere else.
 * `X-Real-IP` and Caddy's `X-Forwarded-*` headers are sent upstream. WebSockets work automatically.
 * If the upstream can't be reached (after `retry`, so a quick restart isn't noticed), or returns 502, 503 or 504, an auto-refreshing maintenance page is shown. It is regenerated from a template on every start, so changes to `/www/public/maintenance.html` are lost. `index.html` is only created when `/www/public` doesn't exist, so your own is kept.
 * Requests for unknown hosts are redirected to `BF_PROXY_DOMAIN`, which serves `/www/public` (static files cached for a year, `/favicon.ico` returning 204 unless you add one).
