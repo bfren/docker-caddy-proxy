@@ -193,7 +193,7 @@ For every domain:
 
 * HTTP is redirected to HTTPS, and certificates are requested and renewed automatically.
 * Responses are compressed with zstd or gzip. Images and other compressed formats, responses under 512 bytes and responses the upstream has already compressed are left alone.
-* `Strict-Transport-Security`, `X-Frame-Options`, `X-Content-Type-Options` and `X-XSS-Protection` are added, and `X-Clacks-Overhead: GNU Terry Pratchett` - [because he was a legend](http://www.gnuterrypratchett.com).
+* `Strict-Transport-Security`, `X-Frame-Options`, `X-Content-Type-Options` and `Referrer-Policy` are added, and `X-Clacks-Overhead: GNU Terry Pratchett` - [because he was a legend](http://www.gnuterrypratchett.com).
   To stop one being added, set it to `null` in the domain's `headers` - e.g. Vaultwarden needs `"X-Frame-Options": null`, because it shows its two-factor pages in frames and sets the header itself everywhere else.
 * `X-Real-IP` and Caddy's `X-Forwarded-*` headers are sent upstream. WebSockets work automatically.
 * If the upstream can't be reached (after `retry`, so a quick restart isn't noticed), or returns 502, 503 or 504, an auto-refreshing maintenance page is shown. It is regenerated from a template on every start, so changes to `/www/public/maintenance.html` are lost. `index.html` is only created when `/www/public` doesn't exist, so your own is kept.
