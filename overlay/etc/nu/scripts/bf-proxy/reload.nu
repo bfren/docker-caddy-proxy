@@ -1,4 +1,5 @@
 use bf
+use conf.nu
 use generate.nu
 
 # Reload Caddy configuration - but only if Caddy is running
@@ -15,5 +16,5 @@ export def main []: nothing -> nothing {
     # validate configuration and then reload using the admin API
     generate validate $caddy_conf
     bf write "Reloading Caddy." reload
-    { ^caddy reload --config $caddy_conf --address "localhost:2019" } | bf handle -I reload
+    { ^caddy reload --config $caddy_conf --address $conf.admin_address } | bf handle -I reload
 }

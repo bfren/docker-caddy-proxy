@@ -85,7 +85,7 @@ export def build [
     let pki = if $opts.internal_ca { {pki: {certificate_authorities: {local: {install_trust: false}}}} } else { {} }
 
     {
-        admin: {listen: "localhost:2019", config: {persist: false}}
+        admin: {listen: $conf.admin_address, config: {persist: false}}
         logging: {logs: {default: {writer: {output: "stdout"}, encoder: {format: "console"}}}}
         storage: {module: "file_system", root: $opts.storage}
         apps: ($pki | merge {
