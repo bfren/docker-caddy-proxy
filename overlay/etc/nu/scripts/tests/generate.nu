@@ -86,6 +86,13 @@ export def build__adds_health_server_on_localhost [] {
     assert equal 200 ($health.routes.0.handle.0.status_code)
 }
 
+export def build__admin_api_uses_unix_socket [] {
+    let result = build_for [] (helpers opts)
+
+    assert equal $conf.admin_address $result.admin.listen
+    assert ($result.admin.listen | str starts-with "unix/") "the admin API should not listen on a network address"
+}
+
 export def build__never_logs_health_server [] {
     let with = build_for [] (helpers opts | update access_log true)
     let without = build_for [] (helpers opts)

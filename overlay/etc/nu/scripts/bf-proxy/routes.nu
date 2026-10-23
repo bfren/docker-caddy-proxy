@@ -7,7 +7,7 @@ export const secure_headers = {
     "Strict-Transport-Security": "max-age=63072000"
     "X-Frame-Options": "SAMEORIGIN"
     "X-Content-Type-Options": "nosniff"
-    "X-XSS-Protection": "1; mode=block"
+    "Referrer-Policy": "strict-origin-when-cross-origin"
 }
 
 # Header added to keep the name of Sir Terry Pratchett in the overhead - see http://www.gnuterrypratchett.com

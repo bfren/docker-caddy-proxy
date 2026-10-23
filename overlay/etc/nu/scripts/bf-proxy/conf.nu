@@ -20,6 +20,11 @@ export const host_pattern = '^([a-z0-9_]([a-z0-9_-]*[a-z0-9])?\.)+[a-z0-9]([a-z0
 # access log so health checks do not fill the container log
 export const health_listen = "127.0.0.1:2020"
 
+# Address of the admin API - a Unix socket, so nothing that can make network requests can reach it, even from
+# inside the container (the directory is created and owned by www in init.d/13-caddy.nu)
+export const admin_dir = "/run/caddy"
+export const admin_address = $"unix/($admin_dir)/admin.sock"
+
 # Valid load balancing selection policies
 export const lb_policies = ["random" "round_robin" "least_conn" "first" "ip_hash" "uri_hash" "client_ip_hash"]
 
