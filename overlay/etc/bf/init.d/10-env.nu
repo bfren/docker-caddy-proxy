@@ -8,6 +8,7 @@ def main [] {
     bf env set PROXY_CONF $"($ssl)/conf.json"
     bf env set PROXY_USERS $"($ssl)/users.json"
     bf env set PROXY_STORAGE $"($ssl)/caddy"
+    bf env set PROXY_CERTS $"($ssl)/certs"
 
     bf env set PROXY_SITES "/sites"
     bf env set PROXY_PUBLIC "/www/public"

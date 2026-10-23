@@ -1,0 +1,12 @@
+#!/usr/bin/nu
+
+use bf
+use bf-proxy
+bf env load -x
+
+# Create empty PEM files for host names without one, and write changed PEM files (private key followed by the full
+# chain) for Caddy's certificates, for use by other containers - runs on start and every 15 minutes
+def main [] {
+    let hosts = bf-proxy pem conf_hosts (bf-proxy conf read)
+    bf-proxy pem sync (bf env PROXY_STORAGE) (bf env PROXY_CERTS) $hosts
+}
