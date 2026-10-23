@@ -5,6 +5,7 @@ export use cleanup.nu
 export use conf.nu
 export use generate.nu
 export use migrate.nu
+export use pem.nu
 export use reload.nu
 export use renew.nu
 export use routes.nu
