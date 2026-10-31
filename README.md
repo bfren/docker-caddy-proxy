@@ -1,6 +1,6 @@
 # Caddy Proxy
 
-![GitHub release (latest by date)](https://img.shields.io/github/v/release/bfren/docker-caddy-proxy) ![Docker Pulls](https://img.shields.io/endpoint?url=https%3A%2F%2Fbfren.dev%2Fdocker%2Fpulls%2Fcaddy-proxy) ![Docker Image Size](https://img.shields.io/endpoint?url=https%3A%2F%2Fbfren.dev%2Fdocker%2Fsize%2Fcaddy-proxy) ![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/bfren/docker-caddy-proxy/dev.yml?branch=main)
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/bfren/docker-caddy-proxy) ![Docker Pulls](https://img.shields.io/endpoint?url=https%3A%2F%2Fbfren.dev%2Fdocker%2Fpulls%2Fcaddy-proxy) ![Docker Image Size](https://img.shields.io/endpoint?url=https%3A%2F%2Fbfren.dev%2Fdocker%2Fsize%2Fcaddy-proxy) ![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/bfren/docker-caddy-proxy/build.yml?branch=main)
 
 [Docker Hub](https://hub.docker.com/r/bfren/caddy-proxy) - [Quay.io](https://quay.io/repository/bfren/caddy-proxy) - [bfren ecosystem](https://github.com/bfren/docker)
 
