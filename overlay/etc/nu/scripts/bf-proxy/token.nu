@@ -1,10 +1,6 @@
 use bf
 use conf.nu
-
-# API used to test each DNS provider's token - a successful response lists the zones the token can manage
-export const zones_api = {
-    hetzner: "https://api.hetzner.cloud/v1/zones?per_page=50"
-}
+use tls.nu
 
 # Verify the DNS provider token by listing the zones it can manage, and check every DNS challenge record is in one of them
 export def main []: nothing -> nothing {
@@ -30,7 +26,7 @@ export def main []: nothing -> nothing {
     let token = bf env --safe $var
     if $token == "" { bf write error $"BF_($var) is not set." token }
 
-    let url = $zones_api | get $opts.dns_provider
+    let url = $tls.dns_zones_api | get $opts.dns_provider
     bf write $"Listing ($opts.dns_provider) zones using BF_($var)." token
     let response = try {
         http get --full --allow-errors --headers {Authorization: $"Bearer ($token)"} $url

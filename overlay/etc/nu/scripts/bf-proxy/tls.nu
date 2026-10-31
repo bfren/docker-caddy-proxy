@@ -8,6 +8,12 @@ export const dns_providers = {
     hetzner: {name: "hetzner", api_token: "{env.BF_PROXY_HETZNER_TOKEN}"}
 }
 
+# API used by proxy-token to test each DNS provider's token - a successful response lists the zones the token can
+# manage (add a provider here when adding it to dns_providers)
+export const dns_zones_api = {
+    hetzner: "https://api.hetzner.cloud/v1/zones?per_page=50"
+}
+
 # Build the DNS challenge configuration using the configured DNS provider
 export def dns_challenge [
     --override-domain: string = ""  # Create the TXT record here instead of _acme-challenge.<host> (see dnsOverrideDomain)

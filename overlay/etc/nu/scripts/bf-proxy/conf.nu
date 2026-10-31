@@ -1,14 +1,12 @@
 use bf
 use bots.nu
+use tls.nu
 
 # Schema
 export const schema = "https://raw.githubusercontent.com/bfren/docker-caddy-proxy/main/proxy-conf-schema.json"
 
 # Valid ACME challenge types
 export const challenges = ["http" "dns"]
-
-# Valid DNS providers for the dns challenge - each uses BF_PROXY_<PROVIDER>_TOKEN
-export const dns_providers = ["hetzner"]
 
 # Valid retry durations (empty disables retries)
 export const duration_pattern = '^(\d+(ms|s|m))?$'
@@ -342,6 +340,8 @@ export def check_env [
     let uses_dns = ($opts.challenge == "dns") or ($domains | any {|d| $d.challenge == "dns" })
     let token_var = token_var $opts
     let no_token = (bf env --safe $token_var) == ""
+    # valid DNS providers for the dns challenge - each uses BF_PROXY_<PROVIDER>_TOKEN
+    let dns_providers = $tls.dns_providers | columns
 
     failures [
         [($opts.proxy_domain == "")                             "BF_PROXY_DOMAIN must be set"]
