@@ -135,12 +135,12 @@ See [Alpine + S6](https://github.com/bfren/docker-alpine-s6#environment-variable
 
 ### Build Arguments
 
-| Argument                | Description                | Default                     |
-| ----------------------- | -------------------------- | --------------------------- |
-| `CADDY_VERSION`         | Caddy release to build.    | `2.11.7`                    |
-| `CADDY_HETZNER_VERSION` | caddy-dns/hetzner release. | `2.0.1`                     |
-| `CADDY_BUILDER`         | xcaddy build image.        | `caddy:2.11-builder-alpine` |
-| `AI_ROBOTS_VERSION`     | ai.robots.txt release.     | `v2.0`                      |
+| Argument                | Description                | Default                                       |
+| ----------------------- | -------------------------- | --------------------------------------------- |
+| `CADDY_VERSION`         | Caddy release to build.    | `2.11.7`                                      |
+| `CADDY_HETZNER_VERSION` | caddy-dns/hetzner release. | `2.0.1`                                       |
+| `CADDY_BUILDER`         | xcaddy build image.        | `quay.io/bfren-bin/caddy:2.11-builder-alpine` |
+| `AI_ROBOTS_VERSION`     | ai.robots.txt release.     | `v2.0`                                        |
 
 ## How It Works
 
