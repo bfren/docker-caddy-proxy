@@ -9,6 +9,11 @@ export const zones_api = {
 # Verify the DNS provider token by listing the zones it can manage, and check every DNS challenge record is in one of them
 export def main []: nothing -> nothing {
     let config = conf read
+    if ($config.errors | is-not-empty) {
+        $config.errors | each {|e| bf write notok $e token } | ignore
+        bf write error $"($config.errors | length) configuration error\(s\) - see above." token
+    }
+
     let opts = $config.opts
     let names = challenge_names (dns_domains $config.domains $opts)
 
