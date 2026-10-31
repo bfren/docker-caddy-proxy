@@ -264,6 +264,7 @@ Run these with `docker exec <container> <command>`. Basic auth passwords are sto
 | `proxy-renew`      | -a: all, or -d: domain     | Delete certificates and restart Caddy to request new ones.     |
 | `proxy-pem`        |                            | Create or update PEM files for other containers now.           |
 | `proxy-cleanup`    | -l: live mode              | Remove domains not in `conf.json` (dry run unless `-l`).       |
+| `proxy-token`      |                            | Verify the Hetzner token and check it can manage your zones.   |
 | `proxy-adduser`    | 0: username, 1: password   | Add or update a basic auth user.                               |
 | `proxy-deluser`    | 0: username                | Remove a basic auth user.                                      |
 

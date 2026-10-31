@@ -340,7 +340,7 @@ export def check_env [
     opts: record            # Options record (see opts)
 ]: nothing -> list<string> {
     let uses_dns = ($opts.challenge == "dns") or ($domains | any {|d| $d.challenge == "dns" })
-    let token_var = $"PROXY_($opts.dns_provider | str uppercase)_TOKEN"
+    let token_var = token_var $opts
     let no_token = (bf env --safe $token_var) == ""
 
     failures [
@@ -352,6 +352,13 @@ export def check_env [
         [(not ($opts.dns_ttl =~ $duration_pattern))             $"BF_PROXY_DNS_TTL '($opts.dns_ttl)' must be a duration, e.g. 60s"]
         [($opts.dns_override_zone != "" and not ($opts.dns_override_zone =~ $host_pattern))  $"BF_PROXY_DNS_OVERRIDE_ZONE '($opts.dns_override_zone)' must be a domain name, e.g. acme.example.net"]
     ]
+}
+
+# Return the name of the variable holding the DNS provider token (without the BF_ prefix), e.g. PROXY_HETZNER_TOKEN
+export def token_var [
+    opts: record    # Options record (see opts)
+]: nothing -> string {
+    $"PROXY_($opts.dns_provider | str uppercase)_TOKEN"
 }
 
 # Load basic auth users from a JSON file of {username: bcrypt hash}
