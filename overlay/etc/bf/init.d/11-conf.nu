@@ -13,7 +13,7 @@ def main [] {
             (glob $"(bf env PROXY_SITES)/*")
             (bf env PROXY_STORAGE)
             (bf env PROXY_CADDY_CONF)
-        ] | each { rm --force --recursive $in }
+        ] | flatten | each { rm --force --recursive $in }
     }
 
     # if conf.json already exists, convert it from nginx-proxy format if necessary - then there is nothing more to do

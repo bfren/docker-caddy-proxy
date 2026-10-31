@@ -1,0 +1,10 @@
+#!/usr/bin/nu
+
+use bf
+use bf-proxy
+bf env load -x
+
+# Verify the DNS provider (Hetzner) token, and check every DNS challenge record is in a zone it can manage
+def main [] {
+    bf-proxy token
+}
