@@ -15,4 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Images are built and published by the shared `bfren/docker` build workflow (`build.yml`), replacing the separate
   `dev.yml` and `publish.yml` workflows.
 
+### Security
+
+- `auth` in `conf.json` must be `true`, `false` or a list of user names. Anything else (e.g. `"auth": "fred"` instead
+  of `["fred"]`) was treated as `true`, letting every user in - it is now a configuration error.
+
 [2.0.0]: https://github.com/bfren/docker-caddy-proxy/compare/v1.0.7...v2.0.0
