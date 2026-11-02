@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.0.0] - Unreleased
 
+### Added
+
+- `proxy-dns` checks the public DNS records needed to issue certificates: A / AAAA records for the http challenge,
+  `_acme-challenge` CNAMEs for the dns challenge, and CAA records allowing Let's Encrypt.
+
 ### Changed
 
 - **Breaking:** base image updated to `bfren/alpine-s6` 7.0.0 - see the

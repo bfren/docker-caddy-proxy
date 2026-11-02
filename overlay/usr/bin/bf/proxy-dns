@@ -1,0 +1,10 @@
+#!/usr/bin/nu
+
+use bf
+use bf-proxy
+bf env load -x
+
+# Check the public DNS records (A / AAAA, _acme-challenge CNAME and CAA) needed to issue certificates
+def main [] {
+    bf-proxy dns
+}

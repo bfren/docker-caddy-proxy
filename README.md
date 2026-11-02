@@ -245,6 +245,14 @@ dig +short CNAME _acme-challenge.send.example.com   # send.example.com.acme.exam
 dig +short NS acme.example.net                      # Hetzner's nameservers
 ```
 
+Or run `proxy-dns`, which looks up public DNS (using Google's DNS-over-HTTPS, as Let's Encrypt sees it) for every host name, including the proxy domain, and checks:
+
+* **http challenge** - the host has A or AAAA records. It warns if any address is not one of the proxy domain's, as Let's Encrypt may use any of them (it prefers IPv6).
+* **dns challenge** - `_acme-challenge.<host>` is a CNAME to the override domain when one is set, and is not a CNAME when it isn't.
+* **CAA** - if the host or a parent has CAA records, they allow `letsencrypt.org` (`issuewild` for wildcards).
+
+It does nothing when `BF_PROXY_USE_INTERNAL_CA=1`, and exits 1 if anything would stop a certificate being issued.
+
 ### Automatic reload
 
 Run `proxy-regenerate` after changing `conf.json`, `users.json` or files in `/sites`, or set `BF_PROXY_AUTO_RELOAD=1` to do it automatically. Files are checked every 5 seconds, and once they have been unchanged for 5 seconds configuration is regenerated and Caddy reloads without dropping connections.
@@ -265,6 +273,7 @@ Run these with `docker exec <container> <command>`. Basic auth passwords are sto
 | `proxy-pem`        |                            | Create or update PEM files for other containers now.           |
 | `proxy-cleanup`    | -l: live mode              | Remove domains not in `conf.json` (dry run unless `-l`).       |
 | `proxy-token`      |                            | Verify the Hetzner token and check it can manage your zones.   |
+| `proxy-dns`        |                            | Check the public DNS records each host name needs (see below). |
 | `proxy-adduser`    | 0: username, 1: password   | Add or update a basic auth user.                               |
 | `proxy-deluser`    | 0: username                | Remove a basic auth user.                                      |
 
