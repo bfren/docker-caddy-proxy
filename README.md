@@ -160,7 +160,7 @@ Domains are defined in `/ssl/conf.json` - see [`proxy-conf-sample.json`](proxy-c
 | `challenge`         | `http` or `dns` - defaults to `BF_PROXY_ACME_CHALLENGE`.                       |
 | `dnsOverrideDomain` | Where to create DNS challenge records (`""` to disable).                       |
 | `redirectToPrimary` | Redirect aliases to the primary domain.                                        |
-| `auth`              | Basic auth: `true` for all users, or a list of names.                          |
+| `auth`              | Basic auth: `false` (default), `true` for all users, or a list of names.       |
 | `headers`           | Response headers to add or override - `null` stops the proxy adding one.       |
 | `routes`            | Extra routes, before the default upstream - see below.                         |
 | `compress`          | `false` to turn off compression.                                               |
@@ -273,7 +273,7 @@ Run these with `docker exec <container> <command>`. Basic auth passwords are sto
 | `proxy-pem`        |                            | Create or update PEM files for other containers now.           |
 | `proxy-cleanup`    | -l: live mode              | Remove domains not in `conf.json` (dry run unless `-l`).       |
 | `proxy-token`      |                            | Verify the Hetzner token and check it can manage your zones.   |
-| `proxy-dns`        |                            | Check the public DNS records each host name needs (see below). |
+| `proxy-dns`        |                            | Check the public DNS records each host name needs (see above). |
 | `proxy-adduser`    | 0: username, 1: password   | Add or update a basic auth user.                               |
 | `proxy-deluser`    | 0: username                | Remove a basic auth user.                                      |
 
