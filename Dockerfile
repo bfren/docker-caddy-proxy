@@ -2,15 +2,15 @@
 # STAGE 0: build Caddy with the Hetzner DNS provider module, and certinfo (used by proxy-certs)
 #======================================================================================================================
 
-ARG CADDY_BUILDER=caddy:2.11-builder-alpine
-ARG BASE_IMAGE=quay.io/bfren/alpine-s6:alpine3.24-6.7.3
+ARG CADDY_BUILDER=quay.io/bfren-bin/caddy:2.11-builder-alpine
+ARG BASE_IMAGE=quay.io/bfren/alpine-s6:alpine3.24-7.0.0
 
 FROM --platform=${BUILDPLATFORM} ${CADDY_BUILDER} AS build
 ARG TARGETOS
 ARG TARGETARCH
 ARG TARGETVARIANT
 
-ARG CADDY_VERSION=2.11.7
+ARG CADDY_VERSION=2.11.8
 ARG CADDY_HETZNER_VERSION=2.0.1
 
 RUN \

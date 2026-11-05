@@ -212,6 +212,18 @@ export def validate__rejects_unknown_auth_users [] {
     assert ($result | any {|x| $x | str contains "unknown auth users alice" })
 }
 
+export def validate__rejects_auth_that_is_not_a_bool_or_list [] {
+    # a single name would otherwise let every user in
+    let opts = helpers opts
+    let message = "auth must be true, false or a list of user names"
+    let check = {|auth| validate [(normalise {primary: "a.test", upstream: "http://a", auth: $auth} $opts)] $opts }
+
+    assert (do $check "bob" | any {|x| $x | str contains $message })
+    assert not (do $check true | any {|x| $x | str contains $message })
+    assert not (do $check false | any {|x| $x | str contains $message })
+    assert not (do $check ["bob"] | any {|x| $x | str contains $message })
+}
+
 export def validate__checks_routes [] {
     let opts = helpers opts
     let routes = [{path: "/a", upstream: "http://a", redirect: "https://b"} {path: "/b"} {path: "/c", upstream: "ftp://c"}]

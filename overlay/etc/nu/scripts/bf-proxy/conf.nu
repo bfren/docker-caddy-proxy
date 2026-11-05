@@ -225,7 +225,8 @@ export def validate_domain [
 ]: nothing -> list<string> {
     let name = if $d.primary == "" { $"domains[($index)]" } else { $d.primary }
     let wildcards = hosts $d | where ($it | str starts-with "*")
-    let unknown_users = if ($d.auth | describe | str starts-with "list") {
+    let auth_type = $d.auth | describe
+    let unknown_users = if ($auth_type | str starts-with "list") {
         $d.auth | where $it not-in ($opts.users | columns)
     } else {
         []
@@ -270,6 +271,12 @@ export def validate_domain [
         [
             (($d.upstream | is-empty) and (not $d.custom))
             "upstream must be set"
+        ]
+        # anything other than a list is treated as true (all users), so e.g. "fred" instead of ["fred"] would let
+        # every user in
+        [
+            ($auth_type != "bool" and not ($auth_type | str starts-with "list"))
+            "auth must be true, false or a list of user names"
         ]
         [
             ($unknown_users | is-not-empty)

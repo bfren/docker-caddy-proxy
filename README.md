@@ -1,6 +1,6 @@
 # Caddy Proxy
 
-![GitHub release (latest by date)](https://img.shields.io/github/v/release/bfren/docker-caddy-proxy) ![Docker Pulls](https://img.shields.io/endpoint?url=https%3A%2F%2Fbfren.dev%2Fdocker%2Fpulls%2Fcaddy-proxy) ![Docker Image Size](https://img.shields.io/endpoint?url=https%3A%2F%2Fbfren.dev%2Fdocker%2Fsize%2Fcaddy-proxy) ![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/bfren/docker-caddy-proxy/dev.yml?branch=main)
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/bfren/docker-caddy-proxy) ![Docker Pulls](https://img.shields.io/endpoint?url=https%3A%2F%2Fbfren.dev%2Fdocker%2Fpulls%2Fcaddy-proxy) ![Docker Image Size](https://img.shields.io/endpoint?url=https%3A%2F%2Fbfren.dev%2Fdocker%2Fsize%2Fcaddy-proxy) ![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/bfren/docker-caddy-proxy/build.yml?branch=main)
 
 [Docker Hub](https://hub.docker.com/r/bfren/caddy-proxy) - [Quay.io](https://quay.io/repository/bfren/caddy-proxy) - [bfren ecosystem](https://github.com/bfren/docker)
 
@@ -23,7 +23,7 @@ This is the successor to [bfren/nginx-proxy](https://github.com/bfren/docker-ngi
 ```yaml
 services:
   proxy:
-    image: quay.io/bfren/caddy-proxy:1.0
+    image: quay.io/bfren/caddy-proxy:2.0
     restart: unless-stopped
     ports:
       - "0.0.0.0:80:80"
@@ -76,9 +76,9 @@ Images are published to Docker Hub (`bfren/caddy-proxy`) and Quay.io (`quay.io/b
 | Tag       | Example | Use when                                   |
 | --------- | ------- | ------------------------------------------ |
 | `latest`  |         | You always want the newest image           |
-| `MAJOR`   | `1`     | You want updates, but not breaking changes |
-| `MINOR`   | `1.0`   | You want fixes only - **recommended**      |
-| `VERSION` | `1.0.0` | You want to pin this image exactly         |
+| `MAJOR`   | `2`     | You want updates, but not breaking changes |
+| `MINOR`   | `2.0`   | You want fixes only - **recommended**      |
+| `VERSION` | `2.0.0` | You want to pin this image exactly         |
 
 ## Configuration
 
@@ -135,12 +135,12 @@ See [Alpine + S6](https://github.com/bfren/docker-alpine-s6#environment-variable
 
 ### Build Arguments
 
-| Argument                | Description                | Default                     |
-| ----------------------- | -------------------------- | --------------------------- |
-| `CADDY_VERSION`         | Caddy release to build.    | `2.11.7`                    |
-| `CADDY_HETZNER_VERSION` | caddy-dns/hetzner release. | `2.0.1`                     |
-| `CADDY_BUILDER`         | xcaddy build image.        | `caddy:2.11-builder-alpine` |
-| `AI_ROBOTS_VERSION`     | ai.robots.txt release.     | `v2.0`                      |
+| Argument                | Description                | Default                                       |
+| ----------------------- | -------------------------- | --------------------------------------------- |
+| `CADDY_VERSION`         | Caddy release to build.    | `2.11.8`                                      |
+| `CADDY_HETZNER_VERSION` | caddy-dns/hetzner release. | `2.0.1`                                       |
+| `CADDY_BUILDER`         | xcaddy build image.        | `quay.io/bfren-bin/caddy:2.11-builder-alpine` |
+| `AI_ROBOTS_VERSION`     | ai.robots.txt release.     | `v2.0`                                        |
 
 ## How It Works
 
@@ -160,7 +160,7 @@ Domains are defined in `/ssl/conf.json` - see [`proxy-conf-sample.json`](proxy-c
 | `challenge`         | `http` or `dns` - defaults to `BF_PROXY_ACME_CHALLENGE`.                       |
 | `dnsOverrideDomain` | Where to create DNS challenge records (`""` to disable).                       |
 | `redirectToPrimary` | Redirect aliases to the primary domain.                                        |
-| `auth`              | Basic auth: `true` for all users, or a list of names.                          |
+| `auth`              | Basic auth: `false` (default), `true` for all users, or a list of names.       |
 | `headers`           | Response headers to add or override - `null` stops the proxy adding one.       |
 | `routes`            | Extra routes, before the default upstream - see below.                         |
 | `compress`          | `false` to turn off compression.                                               |
@@ -245,6 +245,14 @@ dig +short CNAME _acme-challenge.send.example.com   # send.example.com.acme.exam
 dig +short NS acme.example.net                      # Hetzner's nameservers
 ```
 
+Or run `proxy-dns`, which looks up public DNS (using Google's DNS-over-HTTPS, as Let's Encrypt sees it) for every host name, including the proxy domain, and checks:
+
+* **http challenge** - the host has A or AAAA records. It warns if any address is not one of the proxy domain's, as Let's Encrypt may use any of them (it prefers IPv6).
+* **dns challenge** - `_acme-challenge.<host>` is a CNAME to the override domain when one is set, and is not a CNAME when it isn't.
+* **CAA** - if the host or a parent has CAA records, they allow `letsencrypt.org` (`issuewild` for wildcards).
+
+It does nothing when `BF_PROXY_USE_INTERNAL_CA=1`, and exits 1 if anything would stop a certificate being issued.
+
 ### Automatic reload
 
 Run `proxy-regenerate` after changing `conf.json`, `users.json` or files in `/sites`, or set `BF_PROXY_AUTO_RELOAD=1` to do it automatically. Files are checked every 5 seconds, and once they have been unchanged for 5 seconds configuration is regenerated and Caddy reloads without dropping connections.
@@ -265,6 +273,7 @@ Run these with `docker exec <container> <command>`. Basic auth passwords are sto
 | `proxy-pem`        |                            | Create or update PEM files for other containers now.           |
 | `proxy-cleanup`    | -l: live mode              | Remove domains not in `conf.json` (dry run unless `-l`).       |
 | `proxy-token`      |                            | Verify the Hetzner token and check it can manage your zones.   |
+| `proxy-dns`        |                            | Check the public DNS records each host name needs (see above). |
 | `proxy-adduser`    | 0: username, 1: password   | Add or update a basic auth user.                               |
 | `proxy-deluser`    | 0: username                | Remove a basic auth user.                                      |
 

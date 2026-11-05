@@ -1,5 +1,6 @@
 use bf
 use conf.nu
+use dns.nu
 use tls.nu
 
 # Verify the DNS provider token by listing the zones it can manage, and check every DNS challenge record is in one of them
@@ -61,8 +62,7 @@ export def dns_domains [
     domains: list<record>   # Normalised domains
     opts: record            # Options record (see conf opts)
 ]: nothing -> list<record> {
-    let proxy = if $opts.proxy_domain == "" { [] } else { [(conf normalise {primary: $opts.proxy_domain} $opts)] }
-    $domains | append $proxy | where challenge == "dns"
+    dns all_domains $domains $opts | where challenge == "dns"
 }
 
 # Return the names of the TXT records created for DNS challenges - the override domain if set, otherwise
