@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.0] - Unreleased
+## [2.0.0] - 2026-11-05
 
 ### Added
 
@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Caddy updated to [2.11.8](https://github.com/caddyserver/caddy/releases/tag/v2.11.8), which includes security
   fixes. Requests with an invalid host (e.g. `..`) are now rejected with `400`, and responses are compressed even
   when the request sends `Cache-Control: no-transform`.
+- The Caddy build stage now uses `quay.io/bfren-bin/caddy` instead of `caddy` from Docker Hub.
 - Images are built and published by the shared `bfren/docker` build workflow (`build.yml`), replacing the separate
   `dev.yml` and `publish.yml` workflows.
 
