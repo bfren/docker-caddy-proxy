@@ -78,7 +78,7 @@ Images are published to Docker Hub (`bfren/caddy-proxy`) and Quay.io (`quay.io/b
 | `latest`  |         | You always want the newest image           |
 | `MAJOR`   | `2`     | You want updates, but not breaking changes |
 | `MINOR`   | `2.0`   | You want fixes only - **recommended**      |
-| `VERSION` | `2.0.0` | You want to pin this image exactly         |
+| `VERSION` | `2.0.1` | You want to pin this image exactly         |
 
 ## Configuration
 
@@ -137,7 +137,7 @@ See [Alpine + S6](https://github.com/bfren/docker-alpine-s6#environment-variable
 
 | Argument                | Description                | Default                                       |
 | ----------------------- | -------------------------- | --------------------------------------------- |
-| `CADDY_VERSION`         | Caddy release to build.    | `2.11.8`                                      |
+| `CADDY_VERSION`         | Caddy release to build.    | `2.11.9`                                      |
 | `CADDY_HETZNER_VERSION` | caddy-dns/hetzner release. | `2.0.1`                                       |
 | `CADDY_BUILDER`         | xcaddy build image.        | `quay.io/bfren-bin/caddy:2.11-builder-alpine` |
 | `AI_ROBOTS_VERSION`     | ai.robots.txt release.     | `v2.0`                                        |

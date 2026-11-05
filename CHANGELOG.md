@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1] - 2026-11-05
+
+### Changed
+
+- Caddy updated to [2.11.9](https://github.com/caddyserver/caddy/releases/tag/v2.11.9), which fixes a regression in
+  2.11.8 that stopped PHP directory indexes (e.g. `/wp-admin/`) being served, and includes FastCGI security fixes.
+  FastCGI requests whose script path is ambiguous now get `400`, and FastCGI `env` values take precedence over
+  request headers. A conflicting `client_auth` across site blocks is now a Caddyfile error.
+
 ## [2.0.0] - 2026-11-05
 
 ### Added
@@ -29,4 +38,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `auth` in `conf.json` must be `true`, `false` or a list of user names. Anything else (e.g. `"auth": "fred"` instead
   of `["fred"]`) was treated as `true`, letting every user in - it is now a configuration error.
 
+[2.0.1]: https://github.com/bfren/docker-caddy-proxy/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/bfren/docker-caddy-proxy/compare/v1.0.7...v2.0.0
