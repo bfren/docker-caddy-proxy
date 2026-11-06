@@ -25,7 +25,6 @@ def main [] {
     let ai_robots_version = $env | get --optional AI_ROBOTS_VERSION | default ""
     if $ai_robots_version == "" { bf write error "AI_ROBOTS_VERSION must be set." install }
     bots download $ai_robots_version "/usr/share/caddy-proxy/ai-bots.txt"
-    bf build add "ai.robots.txt" $ai_robots_version
 
     # add bf-proxy module to config
     bf config use_mod bf-proxy
