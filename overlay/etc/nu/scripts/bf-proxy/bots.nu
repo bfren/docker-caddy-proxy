@@ -29,9 +29,8 @@ export def select_training [
     robots: record  # Parsed robots.json - keys are user agents
 ]: nothing -> list<string> {
     $robots
-        | transpose agent robot
-        | where {|x| is_training $x.robot }
-        | get agent
+        | record where {|agent, robot| is_training $robot }
+        | columns
         | sort --ignore-case
 }
 

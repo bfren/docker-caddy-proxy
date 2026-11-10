@@ -87,9 +87,8 @@ export def headers_handler [
     let set = $secure_headers
         | merge (if $clacks { $clacks_header } else { {} })
         | merge $custom
-        | transpose key value
-        | where value != null
-        | reduce --fold {} {|it, acc| $acc | insert $it.key [($it.value | into string)] }
+        | record where value != null
+        | record each {|key, value| {$key: [($value | into string)]} }
     {handler: "headers", response: {set: $set, deferred: true}}
 }
 
