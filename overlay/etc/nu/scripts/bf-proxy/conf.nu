@@ -3,7 +3,7 @@ use bots.nu
 use tls.nu
 
 # Schema
-export const schema = "https://raw.githubusercontent.com/bfren/docker-caddy-proxy/main/proxy-conf-schema.json"
+export const schema = "https://schemas.bfren.dev/docker/caddy-proxy/domains.json"
 
 # Valid ACME challenge types
 export const challenges = ["http" "dns"]
