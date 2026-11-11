@@ -78,7 +78,7 @@ Images are published to Docker Hub (`bfren/caddy-proxy`) and Quay.io (`quay.io/b
 | `latest`  |         | You always want the newest image           |
 | `MAJOR`   | `2`     | You want updates, but not breaking changes |
 | `MINOR`   | `2.0`   | You want fixes only - **recommended**      |
-| `VERSION` | `2.0.3` | You want to pin this image exactly         |
+| `VERSION` | `2.0.4` | You want to pin this image exactly         |
 
 ## Configuration
 
