@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.4] - 2026-11-11
+
+### Changed
+
+- The `$schema` written into a generated or converted `conf.json` is now the pinned
+  `https://schemas.bfren.dev/docker/caddy-proxy/domains/2026-11.json`.
+
+### Deprecated
+
+- The old schema URL (`https://raw.githubusercontent.com/bfren/docker-caddy-proxy/main/proxy-conf-schema.json`)
+  still works, but `proxy-conf-schema.json` will be removed in 3.0.0 - change `$schema` in your `conf.json` to the
+  new URL.
+
 ## [2.0.3] - 2026-11-10
 
 ### Changed
@@ -59,6 +72,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `auth` in `conf.json` must be `true`, `false` or a list of user names. Anything else (e.g. `"auth": "fred"` instead
   of `["fred"]`) was treated as `true`, letting every user in - it is now a configuration error.
 
+[2.0.4]: https://github.com/bfren/docker-caddy-proxy/compare/v2.0.3...v2.0.4
 [2.0.3]: https://github.com/bfren/docker-caddy-proxy/compare/v2.0.2...v2.0.3
 [2.0.2]: https://github.com/bfren/docker-caddy-proxy/compare/v2.0.1...v2.0.2
 [2.0.1]: https://github.com/bfren/docker-caddy-proxy/compare/v2.0.0...v2.0.1

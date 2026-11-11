@@ -46,7 +46,7 @@ services:
 
 ```json
 {
-    "$schema": "https://raw.githubusercontent.com/bfren/docker-caddy-proxy/main/proxy-conf-schema.json",
+    "$schema": "https://schemas.bfren.dev/docker/caddy-proxy/domains/2026-11.json",
     "domains": [
         { "primary": "app.example.com", "aliases": [ "www.app.example.com" ], "upstream": "http://app:80" }
     ]
@@ -78,7 +78,7 @@ Images are published to Docker Hub (`bfren/caddy-proxy`) and Quay.io (`quay.io/b
 | `latest`  |         | You always want the newest image           |
 | `MAJOR`   | `2`     | You want updates, but not breaking changes |
 | `MINOR`   | `2.0`   | You want fixes only - **recommended**      |
-| `VERSION` | `2.0.3` | You want to pin this image exactly         |
+| `VERSION` | `2.0.4` | You want to pin this image exactly         |
 
 ## Configuration
 
@@ -148,7 +148,7 @@ On start-up, `conf.json` is read (or converted from nginx-proxy format, or gener
 
 ### conf.json
 
-Domains are defined in `/ssl/conf.json` - see [`proxy-conf-sample.json`](proxy-conf-sample.json) for an example and [`proxy-conf-schema.json`](proxy-conf-schema.json) for the full definition. Add `$schema` (as in the Quickstart) for validation and autocomplete.
+Domains are defined in `/ssl/conf.json` - see [`proxy-conf-sample.json`](proxy-conf-sample.json) for an example and [the schema](https://schemas.bfren.dev/docker/caddy-proxy/domains/2026-11.json) for the full definition. Add `$schema` (as in the Quickstart) for validation and autocomplete.
 
 | Property            | Description                                                                    |
 | ------------------- | ------------------------------------------------------------------------------ |
