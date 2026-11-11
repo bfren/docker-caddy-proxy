@@ -12,10 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The `$schema` written into a generated or converted `conf.json` is now the pinned
   `https://schemas.bfren.dev/docker/caddy-proxy/domains/2026-11.json`.
 
-### Removed
+### Deprecated
 
-- `proxy-conf-schema.json` - the schema now lives at schemas.bfren.dev. The image still reads files whose `$schema`
-  is the old GitHub URL, but editors can no longer load it for validation - change it to the new URL.
+- The old schema URL (`https://raw.githubusercontent.com/bfren/docker-caddy-proxy/main/proxy-conf-schema.json`)
+  still works, but `proxy-conf-schema.json` will be removed in 3.0.0 - change `$schema` in your `conf.json` to the
+  new URL.
 
 ## [2.0.3] - 2026-11-10
 
