@@ -9,8 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- The `$schema` written into a generated or converted `conf.json` is now
-  `https://schemas.bfren.dev/docker/caddy-proxy/domains.json` - existing files that use the old GitHub URL still work.
+- The `$schema` written into a generated or converted `conf.json` is now the pinned
+  `https://schemas.bfren.dev/docker/caddy-proxy/domains/2026-11.json` - existing files that use the old GitHub URL
+  still work.
 
 ## [2.0.3] - 2026-11-10
 

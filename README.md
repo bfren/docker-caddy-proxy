@@ -46,7 +46,7 @@ services:
 
 ```json
 {
-    "$schema": "https://schemas.bfren.dev/docker/caddy-proxy/domains.json",
+    "$schema": "https://schemas.bfren.dev/docker/caddy-proxy/domains/2026-11.json",
     "domains": [
         { "primary": "app.example.com", "aliases": [ "www.app.example.com" ], "upstream": "http://app:80" }
     ]
@@ -148,7 +148,7 @@ On start-up, `conf.json` is read (or converted from nginx-proxy format, or gener
 
 ### conf.json
 
-Domains are defined in `/ssl/conf.json` - see [`proxy-conf-sample.json`](proxy-conf-sample.json) for an example and [the schema](https://schemas.bfren.dev/docker/caddy-proxy/domains.json) for the full definition. Add `$schema` (as in the Quickstart) for validation and autocomplete.
+Domains are defined in `/ssl/conf.json` - see [`proxy-conf-sample.json`](proxy-conf-sample.json) for an example and [the schema](https://schemas.bfren.dev/docker/caddy-proxy/domains/2026-11.json) for the full definition. Add `$schema` (as in the Quickstart) for validation and autocomplete.
 
 | Property            | Description                                                                    |
 | ------------------- | ------------------------------------------------------------------------------ |
