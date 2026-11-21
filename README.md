@@ -220,7 +220,7 @@ Use the DNS challenge for wildcard aliases, and for servers that are not reachab
 2. Set `BF_PROXY_HETZNER_TOKEN` to the token - see [keeping the token out of your compose file](#how-do-i-keep-the-hetzner-token-out-of-my-compose-file). It is never written to the generated configuration: Caddy reads it from the environment.
 3. Set `BF_PROXY_ACME_CHALLENGE=dns`, or `"challenge": "dns"` on each domain.
 
-Caddy waits `BF_PROXY_DNS_PROPAGATION_DELAY` (60 seconds) after creating each record, so Let's Encrypt doesn't ask a nameserver that hasn't got it yet - the missing record would be cached, and retries would fail too. The wait is once per batch of certificates, only when they are issued or renewed. Set `BF_PROXY_DNS_TTL=60s` (Hetzner's lowest) so stale challenge values don't stay cached either.
+Caddy waits `BF_PROXY_DNS_PROPAGATION_DELAY` (60 seconds) after creating each record, so Let's Encrypt doesn't ask a nameserver that hasn't got it yet - the missing record would be cached, and retries would fail too. Caddy's own propagation check isn't enough on its own: it passes as soon as one of the zone's nameservers has the record. Each certificate waits, but certificates are requested in parallel so the waits overlap - and they only happen when certificates are issued or renewed. Set `BF_PROXY_DNS_TTL=60s` (Hetzner's lowest) so stale challenge values don't stay cached either.
 
 #### Domains hosted with another DNS provider
 
@@ -228,7 +228,7 @@ Delegate the challenge to a zone Hetzner hosts using CNAME records. Caddy doesn'
 
 1. Create a zone in the token's Hetzner project, e.g. `acme.example.net` - either a separate domain with its nameservers set to Hetzner's, or a subdomain delegated with NS records at your registrar's DNS.
 2. Set `BF_PROXY_DNS_OVERRIDE_ZONE=acme.example.net`. Each domain using the DNS challenge now creates its records at `<primary>.acme.example.net` - including the proxy domain.
-3. At the domain's own DNS provider, add a CNAME for every host name in the domain (primary **and** aliases) pointing to the primary's name. For wildcards drop the `*.`:
+3. At the domain's own DNS provider, add a CNAME for every host name in the domain (primary **and** aliases) pointing to `<primary>.<zone>`. For wildcards drop the `*.`:
 
 | Record                                 | Type  | Value                                |
 | -------------------------------------- | ----- | ------------------------------------ |
@@ -236,7 +236,7 @@ Delegate the challenge to a zone Hetzner hosts using CNAME records. Caddy doesn'
 | `_acme-challenge.www.send.example.com` | CNAME | `send.example.com.acme.example.net.` |
 | `_acme-challenge.files.example.com`    | CNAME | `send.example.com.acme.example.net.` |
 
-That example is a domain with primary `send.example.com` and aliases `www.send.example.com` and `*.files.example.com`. Using a separate name for each domain stops requests for different domains overwriting each other's records.
+That example is a domain with primary `send.example.com` and aliases `www.send.example.com` and `*.files.example.com`. All the host names in a domain share one name - Caddy tells each challenge's records apart by their values, so they don't conflict. A separate name for each domain just keeps their records apart.
 
 Set `"dnsOverrideDomain"` on a domain to use a different name, or `""` for a domain Hetzner hosts directly, which needs no delegation. Check the records before requesting certificates:
 
@@ -302,7 +302,7 @@ Run these with `docker exec <container> <command>`. Basic auth passwords are sto
 
 ### The DNS challenge fails with NXDOMAIN
 
-The record hadn't reached all of Hetzner's nameservers. Increase `BF_PROXY_DNS_PROPAGATION_DELAY` (e.g. `120s`) and / or set `BF_PROXY_DNS_RESOLVERS` (e.g. `1.1.1.1`). If you delegate, check the CNAME records with `dig` (see [DNS challenge](#domains-hosted-with-another-dns-provider)) - a wrong or missing one fails the same way.
+The record hadn't reached all of Hetzner's nameservers when Let's Encrypt looked it up. Increase `BF_PROXY_DNS_PROPAGATION_DELAY` (e.g. `120s`). `BF_PROXY_DNS_RESOLVERS` (e.g. `1.1.1.1`) only changes the resolvers Caddy uses to find the zone and its nameservers, not what Let's Encrypt sees - set it only if the log shows those lookups failing. If you delegate, check the CNAME records with `dig` (see [DNS challenge](#domains-hosted-with-another-dns-provider)) - a wrong or missing one fails the same way.
 
 ### I always see the maintenance page
 
