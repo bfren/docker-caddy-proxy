@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.5] - Unreleased
+
+### Fixed
+
+- README: corrected the DNS challenge section - how delegated challenge records share a name, the CNAME target
+  (`<primary>.<zone>`), why `BF_PROXY_DNS_PROPAGATION_DELAY` is needed, and what `BF_PROXY_DNS_RESOLVERS` changes.
+
 ## [2.0.4] - 2026-11-11
 
 ### Changed
@@ -72,6 +79,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `auth` in `conf.json` must be `true`, `false` or a list of user names. Anything else (e.g. `"auth": "fred"` instead
   of `["fred"]`) was treated as `true`, letting every user in - it is now a configuration error.
 
+[2.0.5]: https://github.com/bfren/docker-caddy-proxy/compare/v2.0.4...v2.0.5
 [2.0.4]: https://github.com/bfren/docker-caddy-proxy/compare/v2.0.3...v2.0.4
 [2.0.3]: https://github.com/bfren/docker-caddy-proxy/compare/v2.0.2...v2.0.3
 [2.0.2]: https://github.com/bfren/docker-caddy-proxy/compare/v2.0.1...v2.0.2
