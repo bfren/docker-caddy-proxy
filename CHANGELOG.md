@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - README: rewrote the instructions for delegating the DNS challenge from another DNS provider, with a complete
-  example - including the CNAME the proxy domain needs, why aliases use the primary's name, and a wildcard and the
+  example - including the CNAME the proxy domain needs, that aliases use the primary's name, and a wildcard and the
   same name without `*.` having to be in the same domain.
 - README: corrected why `BF_PROXY_DNS_PROPAGATION_DELAY` is needed and what `BF_PROXY_DNS_RESOLVERS` changes.
 
