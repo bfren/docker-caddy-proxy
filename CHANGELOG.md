@@ -9,8 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- README: corrected the DNS challenge section - how delegated challenge records share a name, the CNAME target
-  (`<primary>.<zone>`), why `BF_PROXY_DNS_PROPAGATION_DELAY` is needed, and what `BF_PROXY_DNS_RESOLVERS` changes.
+- README: rewrote the instructions for delegating the DNS challenge from another DNS provider, with a complete
+  example - including the CNAME the proxy domain needs, why aliases use the primary's name, and a wildcard and the
+  same name without `*.` having to be in the same domain.
+- README: corrected why `BF_PROXY_DNS_PROPAGATION_DELAY` is needed and what `BF_PROXY_DNS_RESOLVERS` changes.
 
 ## [2.0.4] - 2026-11-11
 

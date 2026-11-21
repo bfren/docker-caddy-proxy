@@ -224,21 +224,38 @@ Caddy waits `BF_PROXY_DNS_PROPAGATION_DELAY` (60 seconds) after creating each re
 
 #### Domains hosted with another DNS provider
 
-Delegate the challenge to a zone Hetzner hosts using CNAME records. Caddy doesn't follow the CNAME, so it has to be told where to create the record:
+The Hetzner token can only create records in zones Hetzner hosts. For a domain hosted anywhere else, point its `_acme-challenge` records at a zone Hetzner does host, and tell Caddy to create the records there:
 
-1. Create a zone in the token's Hetzner project, e.g. `acme.example.net` - either a separate domain with its nameservers set to Hetzner's, or a subdomain delegated with NS records at your registrar's DNS.
-2. Set `BF_PROXY_DNS_OVERRIDE_ZONE=acme.example.net`. Each domain using the DNS challenge now creates its records at `<primary>.acme.example.net` - including the proxy domain.
-3. At the domain's own DNS provider, add a CNAME for every host name in the domain (primary **and** aliases) pointing to `<primary>.<zone>`. For wildcards drop the `*.`:
+1. In the token's Hetzner project, create a zone for the challenges, e.g. `acme.example.net`. It can be a separate domain using Hetzner's nameservers, or a subdomain of yours delegated to Hetzner with NS records.
+2. Set `BF_PROXY_DNS_OVERRIDE_ZONE=acme.example.net`.
+3. At the other DNS provider, add a CNAME record for every host name, as below.
 
-| Record                                 | Type  | Value                                |
-| -------------------------------------- | ----- | ------------------------------------ |
-| `_acme-challenge.send.example.com`     | CNAME | `send.example.com.acme.example.net.` |
-| `_acme-challenge.www.send.example.com` | CNAME | `send.example.com.acme.example.net.` |
-| `_acme-challenge.files.example.com`    | CNAME | `send.example.com.acme.example.net.` |
+Each domain in `conf.json` gets **one** name in the zone - its primary, e.g. `send.example.com.acme.example.net` - and every host name in the domain points to it, aliases included. With `BF_PROXY_ACME_CHALLENGE=dns` the proxy domain needs one too.
 
-That example is a domain with primary `send.example.com` and aliases `www.send.example.com` and `*.files.example.com`. All the host names in a domain share one name - Caddy tells each challenge's records apart by their values, so they don't conflict. A separate name for each domain just keeps their records apart.
+For example, with `BF_PROXY_DOMAIN=proxy.example.com` and this domain:
 
-Set `"dnsOverrideDomain"` on a domain to use a different name, or `""` for a domain Hetzner hosts directly, which needs no delegation. Check the records before requesting certificates:
+```json
+{ "primary": "send.example.com", "aliases": ["www.send.example.com", "*.files.example.com"], "upstream": "http://app:80" }
+```
+
+| CNAME record                           | Value                                 |
+| -------------------------------------- | ------------------------------------- |
+| `_acme-challenge.proxy.example.com`    | `proxy.example.com.acme.example.net.` |
+| `_acme-challenge.send.example.com`     | `send.example.com.acme.example.net.`  |
+| `_acme-challenge.www.send.example.com` | `send.example.com.acme.example.net.`  |
+| `_acme-challenge.files.example.com`    | `send.example.com.acme.example.net.`  |
+
+* **Record:** `_acme-challenge.` then the host name, without the `*.` for a wildcard.
+* **Value:** the domain's primary, then the zone - the same for every host name in the domain.
+
+Per domain, `"dnsOverrideDomain"` changes this:
+
+* `""` - for a domain Hetzner hosts directly. It needs no CNAME records. (The proxy domain always uses the zone while it is set.)
+* A full name, e.g. `send.acme.example.net` - use that name instead of `<primary>.<zone>`.
+
+A wildcard and the same name without `*.` (e.g. `*.files.example.com` and `files.example.com`) share one CNAME record, so they can't point to different names - put them in the same domain.
+
+Check the records before requesting certificates:
 
 ```sh
 dig +short CNAME _acme-challenge.send.example.com   # send.example.com.acme.example.net.
