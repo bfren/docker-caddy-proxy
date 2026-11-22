@@ -42,6 +42,8 @@ services:
     image: traefik/whoami
 ```
 
+This example is also in [`docker-compose.yml`](docker-compose.yml).
+
 `ssl/conf.json`:
 
 ```json
