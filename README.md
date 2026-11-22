@@ -53,7 +53,11 @@ services:
 }
 ```
 
-Point the DNS records for each host name at your server, run `docker compose up -d`, and check `docker compose logs proxy`. Certificates come from Let's Encrypt's staging server (which browsers don't trust) until you set `BF_PROXY_LETS_ENCRYPT_LIVE=1` - do that once everything works, because the live server is rate limited.
+1. Point the DNS records for `proxy.example.com`, `app.example.com` and `www.app.example.com` at your server.
+2. Run `docker compose up -d`, then check `docker compose logs proxy` for errors.
+3. Once the sites load, set `BF_PROXY_LETS_ENCRYPT_LIVE=1` and run `docker compose up -d` again.
+
+Until step 3, certificates come from Let's Encrypt's staging server, so browsers warn that they aren't trusted. Staging is used first because the live server is rate limited, and failed attempts while you set things up count towards the limit.
 
 ## Features
 
@@ -78,7 +82,7 @@ Images are published to Docker Hub (`bfren/caddy-proxy`) and Quay.io (`quay.io/b
 | `latest`  |         | You always want the newest image           |
 | `MAJOR`   | `2`     | You want updates, but not breaking changes |
 | `MINOR`   | `2.0`   | You want fixes only - **recommended**      |
-| `VERSION` | `2.0.4` | You want to pin this image exactly         |
+| `VERSION` | `2.0.5` | You want to pin this image exactly         |
 
 ## Configuration
 
@@ -204,13 +208,23 @@ With `BF_PROXY_BLOCK_AI_BOTS=1`, crawlers that collect AI training data get 403 
 
 ### Custom domain configuration
 
-Each domain's Caddy configuration is stored in `/sites/<primary>.json`: its `route`, its `errors` route (the maintenance page) and its `tls` policy (including the ACME challenge). What happens to it depends on `custom`:
+Each domain's Caddy configuration is generated into `/sites/<primary>.json`: its `route`, its `errors` route (the maintenance page) and its `tls` policy (including the ACME challenge). The file is regenerated on every start and by `proxy-regenerate`, so don't edit it. Instead, either add your own routes to it, or take it over with `custom`.
 
-* `false` (default) - the file is regenerated on every start and by `proxy-regenerate`, so don't edit it. To add to it, put `*.json` files in `/sites/<primary>.d`, each holding a Caddy [route](https://caddyserver.com/docs/json/apps/http/servers/routes/) or an array of routes. They are added after the security headers and basic auth (so they can't bypass them), and before `routes` and the default upstream.
-  * Files ending `.before.json` are added first instead - before alias redirects, AI bot blocking, security headers, compression and basic auth. Use them only for routes that must **not** be protected, e.g. a public `/health` endpoint on a site that otherwise needs a login. A warning is logged when they are loaded.
-  * Files load in natural sort order - use lower case names with a two-digit prefix, e.g. `10-health.before.json`, `20-api.json`.
-  * Nginx `*.conf` files from nginx-proxy are ignored, with a warning.
-* `true` - an existing file is left alone, giving you complete control. Run `proxy-regenerate -d <primary> -f` to regenerate it.
+#### Adding your own routes
+
+1. Create the folder `/sites/<primary>.d`, e.g. `/sites/app.example.com.d`.
+2. Add `*.json` files to it, each holding a Caddy [route](https://caddyserver.com/docs/json/apps/http/servers/routes/) or an array of routes.
+3. Run `proxy-regenerate`.
+
+Your routes go after the security headers and basic auth, so they are protected like the rest of the site, and before `routes` and the default upstream.
+
+A file ending `.before.json` goes first instead - before alias redirects, AI bot blocking, security headers, compression and basic auth. Use it only for a route that must **not** be protected, e.g. a public `/health` endpoint on a site that otherwise needs a login. A warning is logged when one is loaded.
+
+Files load in natural sort order, so use lower case names with a two-digit prefix, e.g. `10-health.before.json`, `20-api.json`. Nginx `*.conf` files from nginx-proxy are ignored, with a warning.
+
+#### Taking complete control
+
+Set `"custom": true` on the domain. Its file is generated once if it doesn't exist, then left alone, so you can edit it. To regenerate it from `conf.json`, run `proxy-regenerate -d <primary> -f`.
 
 ### DNS challenge
 
@@ -220,7 +234,9 @@ Use the DNS challenge for wildcard aliases, and for servers that are not reachab
 2. Set `BF_PROXY_HETZNER_TOKEN` to the token - see [keeping the token out of your compose file](#how-do-i-keep-the-hetzner-token-out-of-my-compose-file). It is never written to the generated configuration: Caddy reads it from the environment.
 3. Set `BF_PROXY_ACME_CHALLENGE=dns`, or `"challenge": "dns"` on each domain.
 
-Caddy waits `BF_PROXY_DNS_PROPAGATION_DELAY` (60 seconds) after creating each record, so Let's Encrypt doesn't ask a nameserver that hasn't got it yet - the missing record would be cached, and retries would fail too. Caddy's own propagation check isn't enough on its own: it passes as soon as one of the zone's nameservers has the record. Each certificate waits, but certificates are requested in parallel so the waits overlap - and they only happen when certificates are issued or renewed. Set `BF_PROXY_DNS_TTL=60s` (Hetzner's lowest) so stale challenge values don't stay cached either.
+4. Optionally, set `BF_PROXY_DNS_TTL=60s` (Hetzner's lowest), so old challenge values aren't cached for long.
+
+After creating each record, Caddy waits `BF_PROXY_DNS_PROPAGATION_DELAY` (60 seconds) before asking Let's Encrypt to check it. Without the wait, Let's Encrypt may ask a Hetzner nameserver that doesn't have the record yet, and the "not found" answer is cached, so retries fail too. (Caddy's own check passes as soon as one nameserver has the record, which isn't enough.) The wait only happens when a certificate is issued or renewed, and certificates are requested in parallel, so the waits overlap.
 
 #### Domains hosted with another DNS provider
 
@@ -278,21 +294,27 @@ If the new configuration is not valid, the errors are written to the container l
 
 ### Helper commands
 
-Run these with `docker exec <container> <command>`. Basic auth passwords are stored as bcrypt hashes, but `proxy-adduser` takes the password as an argument, so it may be kept in your shell history.
+Run these with `docker exec <container> <command>`, e.g. `docker exec proxy proxy-certs`.
 
-| Command            | Arguments                  | Description                                                    |
-| ------------------ | -------------------------- | -------------------------------------------------------------- |
-| `proxy-regenerate` | -d: only domain, -f: force | Regenerate configuration and reload (force includes `custom`). |
-| `proxy-reload`     |                            | Validate the configuration and reload Caddy.                   |
-| `proxy-validate`   |                            | Validate `conf.json` and the current Caddy configuration.      |
-| `proxy-certs`      |                            | List certificates and days left (flagged at 14 or fewer).      |
-| `proxy-renew`      | -a: all, or -d: domain     | Delete certificates and restart Caddy to request new ones.     |
-| `proxy-pem`        |                            | Create or update PEM files for other containers now.           |
-| `proxy-cleanup`    | -l: live mode              | Remove domains not in `conf.json` (dry run unless `-l`).       |
-| `proxy-token`      |                            | Verify the Hetzner token and check it can manage your zones.   |
-| `proxy-dns`        |                            | Check the public DNS records each host name needs (see above). |
-| `proxy-adduser`    | 0: username, 1: password   | Add or update a basic auth user.                               |
-| `proxy-deluser`    | 0: username                | Remove a basic auth user.                                      |
+| Command                               | Description                                                                  |
+| ------------------------------------- | ---------------------------------------------------------------------------- |
+| `proxy-regenerate`                    | Regenerate configuration from `conf.json` and reload Caddy.                  |
+| `proxy-regenerate -d <primary>`       | Only regenerate that domain's file.                                          |
+| `proxy-regenerate -d <primary> -f`    | Regenerate that domain's file, even with `"custom": true`.                   |
+| `proxy-reload`                        | Validate the current configuration and reload Caddy.                         |
+| `proxy-validate`                      | Validate `conf.json` and the current Caddy configuration.                    |
+| `proxy-certs`                         | List certificates and days left (flagged at 14 or fewer).                    |
+| `proxy-renew -a`                      | Delete all certificates and restart Caddy, so it requests new ones.          |
+| `proxy-renew -d <primary>`            | The same, for one domain (its primary and aliases).                          |
+| `proxy-pem`                           | Write the [PEM files](#how-do-i-use-a-certificate-in-another-container) now. |
+| `proxy-cleanup`                       | List domains no longer in `conf.json` - deletes nothing.                     |
+| `proxy-cleanup -l`                    | Delete those domains' configuration and certificates.                        |
+| `proxy-token`                         | Check the Hetzner token works and can manage your zones.                     |
+| `proxy-dns`                           | Check the public DNS records each host name needs (see above).               |
+| `proxy-adduser <username> <password>` | Add a basic auth user, or change their password.                             |
+| `proxy-deluser <username>`            | Remove a basic auth user.                                                    |
+
+Passwords are stored as bcrypt hashes, but `proxy-adduser` takes the password as an argument, so it may be saved in your shell history.
 
 ## Migrating from nginx-proxy
 
@@ -352,7 +374,20 @@ A PEM file (key and full chain) for each host name is kept in `/ssl/certs/<host>
 
 ### How do I keep the Hetzner token out of my compose file?
 
-Put it in a `.env` file next to `docker-compose.yml` (and out of version control), e.g. `HETZNER_TOKEN=...`, then add `- BF_PROXY_HETZNER_TOKEN=${HETZNER_TOKEN}` to `environment`. Don't add quotes - they become part of the value.
+Put it in a `.env` file next to `docker-compose.yml`, and keep that file out of version control:
+
+```sh
+HETZNER_TOKEN=your-token
+```
+
+Docker Compose reads `.env` automatically, so refer to it in `environment`:
+
+```yaml
+    environment:
+      - BF_PROXY_HETZNER_TOKEN=${HETZNER_TOKEN}
+```
+
+Don't put quotes around the value in `environment` - they become part of the token.
 
 ### Can I use a DNS provider other than Hetzner?
 
