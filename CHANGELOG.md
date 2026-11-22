@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - README: corrected why `BF_PROXY_DNS_PROPAGATION_DELAY` is needed and what `BF_PROXY_DNS_RESOLVERS` changes.
 - README: simpler step-by-step instructions for the Quickstart, adding your own routes to a domain, and keeping the
   Hetzner token in a `.env` file, and a usage example for every helper command.
+- README: the migration steps now use the Quay.io image, like the rest of the examples.
 
 ## [2.0.4] - 2026-11-11
 

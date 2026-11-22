@@ -321,7 +321,7 @@ Passwords are stored as bcrypt hashes, but `proxy-adduser` takes the password as
 ## Migrating from nginx-proxy
 
 1. Copy `/ssl/conf.json` to the new `/ssl` volume - it is converted on start-up. The original is kept as `/ssl/conf.json.nginx-proxy`, and anything that can't be converted is reported in the log.
-2. Change the image to `bfren/caddy-proxy` and rename variables from `PROXY_*` to `BF_PROXY_*` (old names are ignored). These are no longer used: `PROXY_ENABLE_AUTO_UPDATE` (Caddy renews automatically), `PROXY_ENABLE_NAXSI`, `PROXY_SSL_KEY_BITS`, `PROXY_SSL_DHPARAM_BITS`, `PROXY_GETSSL_SKIP_HTTP_TOKEN_CHECK` and `PROXY_UPSTREAM_DNS_RESOLVER`.
+2. Change the image to `quay.io/bfren/caddy-proxy` and rename variables from `PROXY_*` to `BF_PROXY_*` (old names are ignored). These are no longer used: `PROXY_ENABLE_AUTO_UPDATE` (Caddy renews automatically), `PROXY_ENABLE_NAXSI`, `PROXY_SSL_KEY_BITS`, `PROXY_SSL_DHPARAM_BITS`, `PROXY_GETSSL_SKIP_HTTP_TOKEN_CHECK` and `PROXY_UPSTREAM_DNS_RESOLVER`.
 3. Custom Nginx configuration in `/sites` can't be converted - rewrite it as Caddy JSON in `/sites/<primary>.d`.
 4. Existing certificates are not reused. Caddy requests one certificate per host name (getssl used one per primary domain), so check [Let's Encrypt rate limits](https://letsencrypt.org/docs/rate-limits/) if you have many, and keep `BF_PROXY_LETS_ENCRYPT_LIVE=0` until everything works.
 5. `nginx-adduser` is replaced by `proxy-adduser` - users are stored in `/ssl/users.json` and enabled per domain with `auth`.
