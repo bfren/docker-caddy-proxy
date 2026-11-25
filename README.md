@@ -42,6 +42,8 @@ services:
     image: traefik/whoami
 ```
 
+This example is also in [`docker-compose.yml`](docker-compose.yml).
+
 `ssl/conf.json`:
 
 ```json
@@ -53,7 +55,11 @@ services:
 }
 ```
 
-Point the DNS records for each host name at your server, run `docker compose up -d`, and check `docker compose logs proxy`. Certificates come from Let's Encrypt's staging server (which browsers don't trust) until you set `BF_PROXY_LETS_ENCRYPT_LIVE=1` - do that once everything works, because the live server is rate limited.
+1. Point the DNS records for `proxy.example.com`, `app.example.com` and `www.app.example.com` at your server.
+2. Run `docker compose up -d`, then check `docker compose logs proxy` for errors.
+3. Once the sites load, set `BF_PROXY_LETS_ENCRYPT_LIVE=1` and run `docker compose up -d` again.
+
+Until step 3, certificates come from Let's Encrypt's staging server, so browsers warn that they aren't trusted. Staging is used first because the live server is rate limited, and failed attempts while you set things up count towards the limit.
 
 ## Features
 
@@ -78,7 +84,9 @@ Images are published to Docker Hub (`bfren/caddy-proxy`) and Quay.io (`quay.io/b
 | `latest`  |         | You always want the newest image           |
 | `MAJOR`   | `2`     | You want updates, but not breaking changes |
 | `MINOR`   | `2.0`   | You want fixes only - **recommended**      |
-| `VERSION` | `2.0.4` | You want to pin this image exactly         |
+| `VERSION` | `2.0.5` | You want to pin this image exactly         |
+
+A new `MAJOR` version means a breaking change. Before moving to one, read the [changelog](CHANGELOG.md), where each breaking change is marked **Breaking**.
 
 ## Configuration
 
@@ -204,13 +212,23 @@ With `BF_PROXY_BLOCK_AI_BOTS=1`, crawlers that collect AI training data get 403 
 
 ### Custom domain configuration
 
-Each domain's Caddy configuration is stored in `/sites/<primary>.json`: its `route`, its `errors` route (the maintenance page) and its `tls` policy (including the ACME challenge). What happens to it depends on `custom`:
+Each domain's Caddy configuration is generated into `/sites/<primary>.json`: its `route`, its `errors` route (the maintenance page) and its `tls` policy (including the ACME challenge). The file is regenerated on every start and by `proxy-regenerate`, so don't edit it. Instead, either add your own routes to it, or take it over with `custom`.
 
-* `false` (default) - the file is regenerated on every start and by `proxy-regenerate`, so don't edit it. To add to it, put `*.json` files in `/sites/<primary>.d`, each holding a Caddy [route](https://caddyserver.com/docs/json/apps/http/servers/routes/) or an array of routes. They are added after the security headers and basic auth (so they can't bypass them), and before `routes` and the default upstream.
-  * Files ending `.before.json` are added first instead - before alias redirects, AI bot blocking, security headers, compression and basic auth. Use them only for routes that must **not** be protected, e.g. a public `/health` endpoint on a site that otherwise needs a login. A warning is logged when they are loaded.
-  * Files load in natural sort order - use lower case names with a two-digit prefix, e.g. `10-health.before.json`, `20-api.json`.
-  * Nginx `*.conf` files from nginx-proxy are ignored, with a warning.
-* `true` - an existing file is left alone, giving you complete control. Run `proxy-regenerate -d <primary> -f` to regenerate it.
+#### Adding your own routes
+
+1. Create the folder `/sites/<primary>.d`, e.g. `/sites/app.example.com.d`.
+2. Add `*.json` files to it, each holding a Caddy [route](https://caddyserver.com/docs/json/apps/http/servers/routes/) or an array of routes.
+3. Run `proxy-regenerate`.
+
+Your routes go after the security headers and basic auth, so they are protected like the rest of the site, and before `routes` and the default upstream.
+
+A file ending `.before.json` goes first instead - before alias redirects, AI bot blocking, security headers, compression and basic auth. Use it only for a route that must **not** be protected, e.g. a public `/health` endpoint on a site that otherwise needs a login. A warning is logged when one is loaded.
+
+Files load in natural sort order, so use lower case names with a two-digit prefix, e.g. `10-health.before.json`, `20-api.json`. Nginx `*.conf` files from nginx-proxy are ignored, with a warning.
+
+#### Taking complete control
+
+Set `"custom": true` on the domain. Its file is generated once if it doesn't exist, then left alone, so you can edit it. To regenerate it from `conf.json`, run `proxy-regenerate -d <primary> -f`.
 
 ### DNS challenge
 
@@ -220,25 +238,44 @@ Use the DNS challenge for wildcard aliases, and for servers that are not reachab
 2. Set `BF_PROXY_HETZNER_TOKEN` to the token - see [keeping the token out of your compose file](#how-do-i-keep-the-hetzner-token-out-of-my-compose-file). It is never written to the generated configuration: Caddy reads it from the environment.
 3. Set `BF_PROXY_ACME_CHALLENGE=dns`, or `"challenge": "dns"` on each domain.
 
-Caddy waits `BF_PROXY_DNS_PROPAGATION_DELAY` (60 seconds) after creating each record, so Let's Encrypt doesn't ask a nameserver that hasn't got it yet - the missing record would be cached, and retries would fail too. The wait is once per batch of certificates, only when they are issued or renewed. Set `BF_PROXY_DNS_TTL=60s` (Hetzner's lowest) so stale challenge values don't stay cached either.
+4. Optionally, set `BF_PROXY_DNS_TTL=60s` (Hetzner's lowest), so old challenge values aren't cached for long.
+
+After creating each record, Caddy waits `BF_PROXY_DNS_PROPAGATION_DELAY` (60 seconds) before asking Let's Encrypt to check it. Without the wait, Let's Encrypt may ask a Hetzner nameserver that doesn't have the record yet, and the "not found" answer is cached, so retries fail too. (Caddy's own check passes as soon as one nameserver has the record, which isn't enough.) The wait only happens when a certificate is issued or renewed, and certificates are requested in parallel, so the waits overlap.
 
 #### Domains hosted with another DNS provider
 
-Delegate the challenge to a zone Hetzner hosts using CNAME records. Caddy doesn't follow the CNAME, so it has to be told where to create the record:
+The Hetzner token can only create records in zones Hetzner hosts. For a domain hosted anywhere else, point its `_acme-challenge` records at a zone Hetzner does host, and tell Caddy to create the records there:
 
-1. Create a zone in the token's Hetzner project, e.g. `acme.example.net` - either a separate domain with its nameservers set to Hetzner's, or a subdomain delegated with NS records at your registrar's DNS.
-2. Set `BF_PROXY_DNS_OVERRIDE_ZONE=acme.example.net`. Each domain using the DNS challenge now creates its records at `<primary>.acme.example.net` - including the proxy domain.
-3. At the domain's own DNS provider, add a CNAME for every host name in the domain (primary **and** aliases) pointing to the primary's name. For wildcards drop the `*.`:
+1. In the token's Hetzner project, create a zone for the challenges, e.g. `acme.example.net`. It can be a separate domain using Hetzner's nameservers, or a subdomain of yours delegated to Hetzner with NS records.
+2. Set `BF_PROXY_DNS_OVERRIDE_ZONE=acme.example.net`.
+3. At the other DNS provider, add a CNAME record for every host name, as below.
 
-| Record                                 | Type  | Value                                |
-| -------------------------------------- | ----- | ------------------------------------ |
-| `_acme-challenge.send.example.com`     | CNAME | `send.example.com.acme.example.net.` |
-| `_acme-challenge.www.send.example.com` | CNAME | `send.example.com.acme.example.net.` |
-| `_acme-challenge.files.example.com`    | CNAME | `send.example.com.acme.example.net.` |
+Each domain in `conf.json` gets **one** name in the zone - its primary, e.g. `send.example.com.acme.example.net` - and every host name in the domain points to it, aliases included. With `BF_PROXY_ACME_CHALLENGE=dns` the proxy domain needs one too.
 
-That example is a domain with primary `send.example.com` and aliases `www.send.example.com` and `*.files.example.com`. Using a separate name for each domain stops requests for different domains overwriting each other's records.
+For example, with `BF_PROXY_DOMAIN=proxy.example.com` and this domain:
 
-Set `"dnsOverrideDomain"` on a domain to use a different name, or `""` for a domain Hetzner hosts directly, which needs no delegation. Check the records before requesting certificates:
+```json
+{ "primary": "send.example.com", "aliases": ["www.send.example.com", "*.files.example.com"], "upstream": "http://app:80" }
+```
+
+| CNAME record                           | Value                                 |
+| -------------------------------------- | ------------------------------------- |
+| `_acme-challenge.proxy.example.com`    | `proxy.example.com.acme.example.net.` |
+| `_acme-challenge.send.example.com`     | `send.example.com.acme.example.net.`  |
+| `_acme-challenge.www.send.example.com` | `send.example.com.acme.example.net.`  |
+| `_acme-challenge.files.example.com`    | `send.example.com.acme.example.net.`  |
+
+* **Record:** `_acme-challenge.` then the host name, without the `*.` for a wildcard.
+* **Value:** the domain's primary, then the zone - the same for every host name in the domain.
+
+Per domain, `"dnsOverrideDomain"` changes this:
+
+* `""` - for a domain Hetzner hosts directly. It needs no CNAME records. (The proxy domain always uses the zone while it is set.)
+* A full name, e.g. `send.acme.example.net` - use that name instead of `<primary>.<zone>`.
+
+A wildcard and the same name without `*.` (e.g. `*.files.example.com` and `files.example.com`) share one CNAME record, so they can't point to different names - put them in the same domain.
+
+Check the records before requesting certificates:
 
 ```sh
 dig +short CNAME _acme-challenge.send.example.com   # send.example.com.acme.example.net.
@@ -261,26 +298,32 @@ If the new configuration is not valid, the errors are written to the container l
 
 ### Helper commands
 
-Run these with `docker exec <container> <command>`. Basic auth passwords are stored as bcrypt hashes, but `proxy-adduser` takes the password as an argument, so it may be kept in your shell history.
+Run these with `docker exec <container> <command>`, e.g. `docker exec proxy proxy-certs`.
 
-| Command            | Arguments                  | Description                                                    |
-| ------------------ | -------------------------- | -------------------------------------------------------------- |
-| `proxy-regenerate` | -d: only domain, -f: force | Regenerate configuration and reload (force includes `custom`). |
-| `proxy-reload`     |                            | Validate the configuration and reload Caddy.                   |
-| `proxy-validate`   |                            | Validate `conf.json` and the current Caddy configuration.      |
-| `proxy-certs`      |                            | List certificates and days left (flagged at 14 or fewer).      |
-| `proxy-renew`      | -a: all, or -d: domain     | Delete certificates and restart Caddy to request new ones.     |
-| `proxy-pem`        |                            | Create or update PEM files for other containers now.           |
-| `proxy-cleanup`    | -l: live mode              | Remove domains not in `conf.json` (dry run unless `-l`).       |
-| `proxy-token`      |                            | Verify the Hetzner token and check it can manage your zones.   |
-| `proxy-dns`        |                            | Check the public DNS records each host name needs (see above). |
-| `proxy-adduser`    | 0: username, 1: password   | Add or update a basic auth user.                               |
-| `proxy-deluser`    | 0: username                | Remove a basic auth user.                                      |
+| Command                               | Description                                                                  |
+| ------------------------------------- | ---------------------------------------------------------------------------- |
+| `proxy-regenerate`                    | Regenerate configuration from `conf.json` and reload Caddy.                  |
+| `proxy-regenerate -d <primary>`       | Only regenerate that domain's file.                                          |
+| `proxy-regenerate -d <primary> -f`    | Regenerate that domain's file, even with `"custom": true`.                   |
+| `proxy-reload`                        | Validate the current configuration and reload Caddy.                         |
+| `proxy-validate`                      | Validate `conf.json` and the current Caddy configuration.                    |
+| `proxy-certs`                         | List certificates and days left (flagged at 14 or fewer).                    |
+| `proxy-renew -a`                      | Delete all certificates and restart Caddy, so it requests new ones.          |
+| `proxy-renew -d <primary>`            | The same, for one domain (its primary and aliases).                          |
+| `proxy-pem`                           | Write the [PEM files](#how-do-i-use-a-certificate-in-another-container) now. |
+| `proxy-cleanup`                       | List domains no longer in `conf.json` - deletes nothing.                     |
+| `proxy-cleanup -l`                    | Delete those domains' configuration and certificates.                        |
+| `proxy-token`                         | Check the Hetzner token works and can manage your zones.                     |
+| `proxy-dns`                           | Check the public DNS records each host name needs (see above).               |
+| `proxy-adduser <username> <password>` | Add a basic auth user, or change their password.                             |
+| `proxy-deluser <username>`            | Remove a basic auth user.                                                    |
+
+Passwords are stored as bcrypt hashes, but `proxy-adduser` takes the password as an argument, so it may be saved in your shell history.
 
 ## Migrating from nginx-proxy
 
 1. Copy `/ssl/conf.json` to the new `/ssl` volume - it is converted on start-up. The original is kept as `/ssl/conf.json.nginx-proxy`, and anything that can't be converted is reported in the log.
-2. Change the image to `bfren/caddy-proxy` and rename variables from `PROXY_*` to `BF_PROXY_*` (old names are ignored). These are no longer used: `PROXY_ENABLE_AUTO_UPDATE` (Caddy renews automatically), `PROXY_ENABLE_NAXSI`, `PROXY_SSL_KEY_BITS`, `PROXY_SSL_DHPARAM_BITS`, `PROXY_GETSSL_SKIP_HTTP_TOKEN_CHECK` and `PROXY_UPSTREAM_DNS_RESOLVER`.
+2. Change the image to `quay.io/bfren/caddy-proxy` and rename variables from `PROXY_*` to `BF_PROXY_*` (old names are ignored). These are no longer used: `PROXY_ENABLE_AUTO_UPDATE` (Caddy renews automatically), `PROXY_ENABLE_NAXSI`, `PROXY_SSL_KEY_BITS`, `PROXY_SSL_DHPARAM_BITS`, `PROXY_GETSSL_SKIP_HTTP_TOKEN_CHECK` and `PROXY_UPSTREAM_DNS_RESOLVER`.
 3. Custom Nginx configuration in `/sites` can't be converted - rewrite it as Caddy JSON in `/sites/<primary>.d`.
 4. Existing certificates are not reused. Caddy requests one certificate per host name (getssl used one per primary domain), so check [Let's Encrypt rate limits](https://letsencrypt.org/docs/rate-limits/) if you have many, and keep `BF_PROXY_LETS_ENCRYPT_LIVE=0` until everything works.
 5. `nginx-adduser` is replaced by `proxy-adduser` - users are stored in `/ssl/users.json` and enabled per domain with `auth`.
@@ -302,7 +345,7 @@ Run these with `docker exec <container> <command>`. Basic auth passwords are sto
 
 ### The DNS challenge fails with NXDOMAIN
 
-The record hadn't reached all of Hetzner's nameservers. Increase `BF_PROXY_DNS_PROPAGATION_DELAY` (e.g. `120s`) and / or set `BF_PROXY_DNS_RESOLVERS` (e.g. `1.1.1.1`). If you delegate, check the CNAME records with `dig` (see [DNS challenge](#domains-hosted-with-another-dns-provider)) - a wrong or missing one fails the same way.
+The record hadn't reached all of Hetzner's nameservers when Let's Encrypt looked it up. Increase `BF_PROXY_DNS_PROPAGATION_DELAY` (e.g. `120s`). `BF_PROXY_DNS_RESOLVERS` (e.g. `1.1.1.1`) only changes the resolvers Caddy uses to find the zone and its nameservers, not what Let's Encrypt sees - set it only if the log shows those lookups failing. If you delegate, check the CNAME records with `dig` (see [DNS challenge](#domains-hosted-with-another-dns-provider)) - a wrong or missing one fails the same way.
 
 ### I always see the maintenance page
 
@@ -335,7 +378,20 @@ A PEM file (key and full chain) for each host name is kept in `/ssl/certs/<host>
 
 ### How do I keep the Hetzner token out of my compose file?
 
-Put it in a `.env` file next to `docker-compose.yml` (and out of version control), e.g. `HETZNER_TOKEN=...`, then add `- BF_PROXY_HETZNER_TOKEN=${HETZNER_TOKEN}` to `environment`. Don't add quotes - they become part of the value.
+Put it in a `.env` file next to `docker-compose.yml`, and keep that file out of version control:
+
+```sh
+HETZNER_TOKEN=your-token
+```
+
+Docker Compose reads `.env` automatically, so refer to it in `environment`:
+
+```yaml
+    environment:
+      - BF_PROXY_HETZNER_TOKEN=${HETZNER_TOKEN}
+```
+
+Don't put quotes around the value in `environment` - they become part of the token.
 
 ### Can I use a DNS provider other than Hetzner?
 

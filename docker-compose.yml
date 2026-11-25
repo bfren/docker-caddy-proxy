@@ -1,0 +1,19 @@
+services:
+  proxy:
+    image: quay.io/bfren/caddy-proxy:2.0
+    restart: unless-stopped
+    ports:
+      - "0.0.0.0:80:80"
+      - "0.0.0.0:443:443"
+      - "0.0.0.0:443:443/udp"
+    environment:
+      - BF_PROXY_DOMAIN=proxy.example.com
+      - BF_PROXY_LETS_ENCRYPT_EMAIL=you@example.com
+      - BF_PROXY_LETS_ENCRYPT_LIVE=0
+    volumes:
+      - ./ssl:/ssl
+      - ./sites:/sites
+      - ./www:/www
+
+  app:
+    image: traefik/whoami

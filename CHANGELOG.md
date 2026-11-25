@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.5] - 2026-11-25
+
+### Added
+
+- `docker-compose.yml` - the Quickstart example as a file you can copy.
+
+### Changed
+
+- Base image updated to `bfren/alpine-s6` 7.0.3, which rebuilds BusyBox, figlet and Nushell without changing
+  their versions - see the [Alpine + S6 changelog](https://github.com/bfren/docker-alpine-s6/blob/main/CHANGELOG.md).
+
+### Fixed
+
+- README: rewrote the instructions for delegating the DNS challenge from another DNS provider, with a complete
+  example - including the CNAME the proxy domain needs, that aliases use the primary's name, and a wildcard and the
+  same name without `*.` having to be in the same domain.
+- README: corrected why `BF_PROXY_DNS_PROPAGATION_DELAY` is needed and what `BF_PROXY_DNS_RESOLVERS` changes.
+- README: simpler step-by-step instructions for the Quickstart, adding your own routes to a domain, and keeping the
+  Hetzner token in a `.env` file, and a usage example for every helper command.
+- README: the migration steps now use the Quay.io image, like the rest of the examples.
+
 ## [2.0.4] - 2026-11-11
 
 ### Changed
@@ -72,6 +93,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `auth` in `conf.json` must be `true`, `false` or a list of user names. Anything else (e.g. `"auth": "fred"` instead
   of `["fred"]`) was treated as `true`, letting every user in - it is now a configuration error.
 
+[2.0.5]: https://github.com/bfren/docker-caddy-proxy/compare/v2.0.4...v2.0.5
 [2.0.4]: https://github.com/bfren/docker-caddy-proxy/compare/v2.0.3...v2.0.4
 [2.0.3]: https://github.com/bfren/docker-caddy-proxy/compare/v2.0.2...v2.0.3
 [2.0.2]: https://github.com/bfren/docker-caddy-proxy/compare/v2.0.1...v2.0.2
